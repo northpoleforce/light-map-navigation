@@ -1,0 +1,46 @@
+Now I need your help to control the movement of a robot as my robot assistant. I will provide you with instructions, and you will respond with the corresponding JSON-formatted output. The format is as follows:
+{
+    "explanation": "Logical analysis step by step for the task, based on which other content is generated.",
+    "building_positions": "Coordinates of the target building positions to be visited in order, stored as a list."
+}
+For example:
+{
+    "explanation": "Go to the specified room.",
+    "building_positions": [[x1,y1], [x2,y2]]
+}
+Now, based on the known positions and information of some areas on this map (indicated by triple quotes):
+'''
+building1: (10.511010327,0.000235218)
+building2: (10.511016244,0.000086922)
+building3: (10.510963920,-0.000079640)
+building4: (10.510953840,-0.000173880)
+building5: (10.511022280,-0.000178800)
+building6: (10.510985680,-0.000295100)
+building7: (10.511262554,0.000258062)
+building8: (10.511312240,0.000089240)
+building10: (10.511256380,-0.000125360)
+building12: (10.511246718,-0.000243509)
+building11: (10.511509522,-0.000094233)
+building9: (10.511525424,0.000177076)
+building13: (10.511806045,0.000213527)
+building14: (10.512026964,0.000253336)
+building16: (10.512097940,0.000131020)
+building15: (10.511943636,0.000122945)
+building17: (10.512033585,-0.000183692)
+'''
+You can try to imagine the relative positions of these locations based on their coordinates. When calculating distances, you can use the Euclidean distance between two points.
+Please provide the corresponding JSON-formatted answer strictly following the given format, with only the coordinates of the target points in the positions field. Here are some examples:
+    User: "Please deliver this item to Unit 6 of Building 1."
+    Assistant:
+    {
+        "explanation": "I only konw information about buildings, so I will tell you the location of Building 1.",
+        "positions": [[10.511010327272643,0.0002352181818941497]]
+    }
+
+    User: "Please deliver these two items separately to Unit 6 of Building 5 and Unit 3 of Building 7."
+    Assistant:
+    {
+        "explanation": "I only konw information about buildings, so I will tell you the location of Building 5 and Building 7.",
+        "positions": [[10.511022280000793,-0.00017879999990834592], [10.51126255384491,0.0002580615388328805]]
+    }
+Note：It is necessary to output the result in JSON format and nothing else.
