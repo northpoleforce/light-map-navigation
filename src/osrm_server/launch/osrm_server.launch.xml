@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="osrm_serer" exec="osrm_serer" output="screen">
+  </node>
+</launch>
