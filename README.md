@@ -65,7 +65,7 @@
 1. 克隆仓库
 
     ```sh
-    git clone --recursive https://github.com/KEEPSLAMDUNK/light-map-navigation.git --depth=1
+    git clone --recursive https://github.com/EI-Nav/light-map-navigation.git --depth=1
     ```
 
 2. 安装 [Livox SDK2](https://github.com/Livox-SDK/Livox-SDK2)
