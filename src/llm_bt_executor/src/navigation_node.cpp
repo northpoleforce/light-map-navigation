@@ -11,11 +11,12 @@ BT_REGISTER_NODES(factory)
 
 BT::NodeStatus NavigationAction::onStart()
 {
-  std::cout << "Task Begin!";
+  if (!getInput<std::string>("start_pos", start_pos_))
+    throw BT::RuntimeError("Missing required input [start_pos]");
+  if (!getInput<std::string>("end_pos", end_pos_))
+    throw BT::RuntimeError("Missing required input [end_pos]");
 
-  // We use this counter to simulate an action that takes a certain
-  // amount of time to be completed (220 ms)
-  _completion_time = std::chrono::system_clock::now() + std::chrono::milliseconds(220);
+  std::cout << "Task Begin!";
 
   return BT::NodeStatus::RUNNING;
 }

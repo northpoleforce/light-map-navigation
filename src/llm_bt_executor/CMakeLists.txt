@@ -14,11 +14,13 @@ find_package(behaviortree_ros2 REQUIRED)
 find_package(btcpp_ros2_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(custom_interfaces REQUIRED)
 
 set(THIS_PACKAGE_DEPS
     behaviortree_ros2
     std_msgs
     std_srvs
+    custom_interfaces
     btcpp_ros2_interfaces )
 
 include_directories(include)

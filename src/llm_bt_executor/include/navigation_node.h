@@ -12,7 +12,8 @@ public:
   // It is mandatory to define this static method.
   static BT::PortsList providedPorts()
   {
-    return {};
+    return {BT::InputPort<std::string>("start_pos"),
+            BT::InputPort<std::string>("end_pos")};
   }
 
   // this function is invoked once at the beginning.
@@ -27,4 +28,6 @@ public:
 
 private:
   std::chrono::system_clock::time_point _completion_time;
+  std::string start_pos_;
+  std::string end_pos_;
 };

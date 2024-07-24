@@ -1,7 +1,9 @@
 #include <behaviortree_ros2/tree_execution_server.hpp>
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 
-#include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/string.hpp>
+
+#include "custom_interfaces/msg/path.hpp"
 
 class LLMActionServer : public BT::TreeExecutionServer
 {
@@ -9,15 +11,12 @@ public:
   LLMActionServer(const rclcpp::NodeOptions& options) : TreeExecutionServer(options)
   {
     // here we assume that the battery voltage is published as a std_msgs::msg::Float32
-    // sub_ = node()->create_subscription<std_msgs::msg::Float32>(
-    //     "battery_level", 10, [this](const std_msgs::msg::Float32::SharedPtr msg) {
-    //       // Update the global blackboard
-    //       globalBlackboard()->set("battery_level", msg->data);
-    //     });
-    // Note that the callback above and the execution of the tree accessing the
-    // global blackboard happen in two different threads.
-    // The former runs in the MultiThreadedExecutor, while the latter in the thread created
-    // by TreeExecutionServer. But this is OK because the blackboard is thread-safe.
+    sub_ = node()->create_subscription<custom_interfaces::msg::Path>(
+        "path_topic", 10, [this](const custom_interfaces::msg::Path::SharedPtr msg) {
+          // Update the global blackboard<
+          globalBlackboard()->set("start_pos", msg->start);
+          globalBlackboard()->set("end_pos", msg->end);
+        });
   }
 
   void onTreeCreated(BT::Tree& tree) override
@@ -36,7 +35,7 @@ public:
 
 private:
   std::shared_ptr<BT::StdCoutLogger> logger_cout_;
-  // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_;
+  rclcpp::Subscription<custom_interfaces::msg::Path>::SharedPtr sub_;
 };
 
 int main(int argc, char* argv[])
