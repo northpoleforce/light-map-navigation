@@ -10,6 +10,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(custom_interfaces
+    "msg/Path.msg"
     "srv/GetWaypoints.srv"
     DEPENDENCIES geometry_msgs
     )
