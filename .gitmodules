@@ -1,5 +1,5 @@
-[submodule "src/rm_driver/livox_ros_driver2"]
-	path = src/rm_driver/livox_ros_driver2
+[submodule "src/rm_driver/livox_ros_driver2_humble"]
+	path = src/rm_driver/livox_ros_driver2_humble
 	url = https://gitee.com/SMBU-POLARBEAR/livox_ros_driver2_humble.git
 	ignore = dirty
 [submodule "src/rm_navigation/teb_local_planner"]
