@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'osrm_server_node = osrm_server.osrm_server_node:main',
+            'path_publisher_node = osrm_server.path_publisher:main',
         ],
     },
 )
