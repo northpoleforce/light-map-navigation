@@ -1,6 +1,5 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.parameter import Parameter
 from rclpy.action import ActionClient
 from nav2_simple_commander.robot_navigator import BasicNavigator
 from nav2_msgs.action import NavigateToPose
@@ -9,13 +8,11 @@ from pyproj import CRS, Transformer
 import llm_agent as LLMAgent
 import osm_route as OsmRoute
 from tf2_ros import TransformListener, Buffer
-from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 
 class DeliveryActionClient(Node):
     def __init__(self):
-        super().__init__('delivery_action_client', parameter_overrides=[
-            Parameter('use_sim_time', Parameter.Type.BOOL, False)
-        ])
+        super().__init__('delivery_action_client')
+
         self.action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.navigator = BasicNavigator()
         self.tf_buffer = Buffer()
@@ -26,18 +23,18 @@ class DeliveryActionClient(Node):
         self.current_waypoint_index = 0
         self.waypoints = []
 
-        # Subscribe to the robot's position topic
         self.robot_position = None
         self.position_subscription = self.create_subscription(
             Pose,
             '/robot_position',
             self.position_callback,
-            20)
-        
+            20
+        )
+
     def position_callback(self, msg):
         self.robot_position = [msg.position.x, msg.position.y]
         # self.get_logger().info(f"Received robot position: x={msg.position.x}, y={msg.position.y}")
-    
+
     def get_robot_position(self):
         return self.robot_position
 
@@ -69,7 +66,6 @@ class DeliveryActionClient(Node):
         result = future.result().result
         self.get_logger().info(f'Result: {result}')
 
-        # Move to the next waypoint
         self.current_waypoint_index += 1
         if self.current_waypoint_index < len(self.waypoints):
             next_waypoint = self.waypoints[self.current_waypoint_index]
@@ -83,46 +79,42 @@ def main(args=None):
     response = LLMAgent.call_llm(user_input)
     building_coords, _ = LLMAgent.extract_coordinates(response)
 
-    building_positions_list = building_coords
-
-    for i, position in enumerate(building_positions_list, start=0):
-
+    for i, position in enumerate(building_coords, start=1):
         rclpy.init(args=args)
         delivery_client = DeliveryActionClient()
-        delivery_client.get_logger().info(f"Delivering to location {i+1}, please wait patiently!\n")
+
+        delivery_client.get_logger().info(f"Delivering to location {i}, please wait patiently!\n")
 
         try:
-            # Wait for the robot's position to be received
             while rclpy.ok() and delivery_client.get_robot_position() is None:
                 rclpy.spin_once(delivery_client, timeout_sec=1.0)
             robot_position = delivery_client.get_robot_position()
 
             if robot_position is None:
                 delivery_client.get_logger().error("Robot position is not available.")
-                return
+                continue
 
             curr_robot_position = list(delivery_client.transformer.transform(robot_position[0], robot_position[1]))
-        
+
             start_position = f"{curr_robot_position[0]:.9f},{curr_robot_position[1]:.9f}"
             end_position = f"{position[0]:.9f},{position[1]:.9f}"
 
             waypoints = OsmRoute.get_route(start_position, end_position)
             if waypoints:
-                delivery_client.waypoints = waypoints  # Store waypoints
+                delivery_client.waypoints = waypoints
+                delivery_client.send_goal(delivery_client.waypoints[0])
+                rclpy.spin(delivery_client)
             else:
                 delivery_client.get_logger().info(f"Unable to get a valid navigation path from {start_position} to {end_position}\n")
 
-            if delivery_client.waypoints:
-                delivery_client.send_goal(delivery_client.waypoints[0])  # Start with the first waypoint
-                rclpy.spin(delivery_client)
         except Exception as e:
             delivery_client.get_logger().error(f"Error occurred: {e}")
+
         finally:
             if rclpy.ok():
                 rclpy.shutdown()
 
-        delivery_client.get_logger().info(f"Delivered to location {i+1}, good job!\n")
-
+        delivery_client.get_logger().info(f"\nDelivered to location {i}, good job!\n")
 
 if __name__ == '__main__':
     main()
