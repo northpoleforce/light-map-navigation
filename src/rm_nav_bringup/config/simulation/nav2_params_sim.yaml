@@ -111,8 +111,8 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.2
-      yaw_goal_tolerance: 0.15
+      xy_goal_tolerance: 0.5
+      yaw_goal_tolerance: 0.3
     FollowPath:
       plugin: teb_local_planner::TebLocalPlannerROS
       # https://github.com/rst-tu-dortmund/teb_local_planner/tree/ros2-master
@@ -146,9 +146,9 @@ controller_server:
       #*******************************************************************************
       max_vel_x: 0.5                       #最大平移速度
       max_vel_x_backwards: 0.2              #最大后退速度
-      max_vel_theta: 2.0                    #最大转向角速度
-      acc_lim_x: 2.5                        #最大平移加速度
-      acc_lim_theta: 3.2                    #最大角加速度
+      max_vel_theta: 1.0                    #最大转向角速度
+      acc_lim_x: 1.5                        #最大平移加速度
+      acc_lim_theta: 1.6                    #最大角加速度
       is_footprint_dynamic: False           #如果为真，在检查轨迹可行性之前更新足迹
       use_proportional_saturation: False    #如果为true，则按比例减少所有扭曲分量（线性x和y以及角度z）（如果任何扭曲分量超过其相应的界限），而不是单独饱和每个扭曲分量
       transform_tolerance: 0.5              #在TF树中查询转换时的容差（秒）
