@@ -1,6 +1,6 @@
 {
 	"name": "light-map-navigation",
-	"image": "light-map-navigation:1.2./",
+	"image": "light-map-navigation:1.3",
 	"runArgs": [
 	  "--init",
 	  "--gpus=all",

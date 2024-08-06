@@ -2,7 +2,7 @@
 
 ## 一. 项目介绍
 
-本项目希望实现基于OpenStreetMap地图（无需提前建图）的具身智能导航系统。
+本项目实现了基于OpenStreetMap地图（无需提前建图）的具身智能导航系统。
 
 ### 1.1 rm_simulation 话题接口
 
@@ -11,7 +11,7 @@
 | /livox/lidar             | livox_ros_driver2/msg/CustomMsg | Mid360 自定义消息类型   |
 | /livox/lidar/pointcloud | sensor_msgs/msg/PointCloud2     | ROS2 点云消息类型                      |
 | /livox/imu                | sensor_msgs/msg/Imu             | Gazebo 插件仿真 IMU                  |
-| /cmd_vel            | geometry_msgs/msg/Twist         | 全向小车运动控制接口                  |
+| /cmd_vel            | geometry_msgs/msg/Twist         | 差速小车运动控制接口                |
 
 ### 1.2 架构图
 
@@ -151,14 +151,24 @@
 - 已知全局地图导航（**当前重点关注**）
 
     ```sh
+    # 运行机器人导航系统及仿真环境
     ros2 launch rm_nav_bringup bringup_sim.launch.py \
-    world:=RMUL \
+    world:=OSM \
     mode:=nav \
     lio:=fastlio \
     localization:=icp \
     lio_rviz:=False \
     nav_rviz:=True
     use_sim_time:=True
+    
+    # 运行探索节点
+    ros2 run llm_exploration_py get_unit_num_service
+    
+    # 运行单元号识别节点
+    ros2 run llm_exploration_py find_unit_server
+    
+    # 运行配送服务节点
+    ros2 run llm_delivery llm_delivery_node
     ```
 
 ### 3.3 真实模式示例
@@ -227,13 +237,11 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 四轮小车，采用差速运动模型。
 
-原仓库为麦克纳姆轮模型，已将仿真部分改成上述模型，请重点关注仿真部分。
-
 ## 六. 存在的问题
 
 - ~~局部规划可能存在问题，在转弯的时候有可能会撞墙。~~
 - ~~无法穿行桥洞类区域（树下）。~~
-- 在某些case下，规控很难到达waypoint。
+- 在某些case下，规控很难到达waypoint。(反复横跳现象)
 - icp定位模式下坐标系有问题，小车处于地图的下方。
 
 ## 七. TODO
@@ -242,7 +250,10 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 - [x] 基于LLM，实现基本的自然语言交互导航（导航到几号楼）。
 - [ ] 更加智能的基于自然语言交互的决策模块。
 - [ ] 基于因子图的多模态定位模块。
-- [ ] 在楼附近进行探索，找到指定的单元门。
+- [x] 在楼附近进行探索，找到指定的单元门。
+- [ ] 配送请求生成器
+- [ ] 导航结果评估器
+- [ ] easy and hard world models
 
 ## 致谢
 

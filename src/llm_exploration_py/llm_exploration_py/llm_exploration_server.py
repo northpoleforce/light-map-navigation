@@ -101,7 +101,6 @@ class LlmExplorationNode(Node):
                     response = await self.get_unit_send_request(self.desire_unit_num)
                     if response and response.result:
                         self.is_task_success = True
-                        print(self.is_task_success)
                         break
                     else:
                         self.current_waypoint_index += 1
