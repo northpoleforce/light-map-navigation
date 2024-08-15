@@ -206,7 +206,7 @@
 ### 3.4 小工具 - 键盘控制
 
 ```sh
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:=cmd_vel_chassis
 ```
 
 ## 四. 实车适配关键参数
