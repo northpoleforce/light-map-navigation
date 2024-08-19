@@ -2651,6 +2651,7 @@
         <kinematic>0</kinematic>
       </link>
       <pose>14 -22.5 1.57966 0 -0 0</pose>
+      <enable_wind>0</enable_wind>
     </model>
     <model name='house_2_125'>
       <static>1</static>
@@ -11791,10 +11792,10 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <state world_name='default'>
-      <sim_time>11473 823000000</sim_time>
-      <real_time>12086 222196822</real_time>
-      <wall_time>1721975158 217145298</wall_time>
-      <iterations>11171816</iterations>
+      <sim_time>11577 841000000</sim_time>
+      <real_time>104 402557493</real_time>
+      <wall_time>1723785250 697701843</wall_time>
+      <iterations>104018</iterations>
       <model name='ambulance_72'>
         <pose>63.99 7.06 0 0 0 -2.14</pose>
         <scale>1 1 1</scale>
@@ -11841,8 +11842,8 @@
         <link name='link'>
           <pose>-32 8 0.149 0 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 1.9e-05 -0 -0.000128 2e-06 0</acceleration>
-          <wrench>1e-06 3.8e-05 -1e-06 0 -0 0</wrench>
+          <acceleration>-0 -1.9e-05 0 0.000128 -2e-06 0</acceleration>
+          <wrench>-1e-06 -3.8e-05 1e-06 0 -0 0</wrench>
         </link>
       </model>
       <model name='dumpster_94'>
@@ -11851,8 +11852,8 @@
         <link name='link'>
           <pose>15.94 -13.63 0.000917 -0 -2e-06 3.14</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0.006033 -1e-05 -5e-06 0.010454 0.280671 4e-06</acceleration>
-          <wrench>0.006033 -1e-05 -5e-06 0 -0 0</wrench>
+          <acceleration>0.006033 -1e-05 -0 0.010454 0.280674 4e-06</acceleration>
+          <wrench>0.006033 -1e-05 -0 0 -0 0</wrench>
         </link>
       </model>
       <model name='fast_food_93'>
@@ -12796,10 +12797,10 @@
         </link>
       </model>
       <model name='radio_tower_124'>
-        <pose>14 -22.5 1.57966 0 -0 0</pose>
+        <pose>14 -22.5 0 0 -0 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose>14 -22.5 1.57966 0 -0 0</pose>
+          <pose>14 -22.5 0 0 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
@@ -14189,7 +14190,7 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>31.6499 -78.1599 81.3441 0 0.845802 1.57066</pose>
+        <pose>-18.5375 -206.931 209.207 0 0.769802 1.35067</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
