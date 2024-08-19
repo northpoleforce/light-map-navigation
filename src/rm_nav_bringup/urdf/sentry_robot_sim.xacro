@@ -224,7 +224,7 @@
       <publish_rate>10</publish_rate>
 
       <!-- Set if odom required -->
-      <publish_odom>false</publish_odom>
+      <publish_odom>true</publish_odom>
       <publish_odom_tf>false</publish_odom_tf>
 
       <!-- Frame IDs -->

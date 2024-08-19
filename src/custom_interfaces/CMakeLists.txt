@@ -13,6 +13,7 @@ rosidl_generate_interfaces(custom_interfaces
     "msg/Path.msg"
     "srv/GetWaypoints.srv"
     "srv/GetUnitNum.srv"
+    "srv/TaskRecord.srv"
     "action/FindUnit.action"
     DEPENDENCIES geometry_msgs
     )

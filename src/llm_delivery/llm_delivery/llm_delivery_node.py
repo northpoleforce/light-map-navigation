@@ -9,6 +9,8 @@ import llm_delivery.llm_agent as LLMAgent
 import llm_delivery.osm_route as OsmRoute
 from tf2_ros import TransformListener, Buffer
 from custom_interfaces.action import FindUnit
+from custom_interfaces.srv import TaskRecord
+import sys
 
 class DeliveryActionClient(Node):
     def __init__(self):
@@ -33,12 +35,35 @@ class DeliveryActionClient(Node):
             20
         )
 
+        # Service client for TaskRecord
+        self.task_record_client = self.create_client(TaskRecord, 'task_record')
+        while not self.task_record_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('TaskRecord service not available, waiting...')
+
     def position_callback(self, msg):
         self.robot_position = [msg.position.x, msg.position.y]
         # self.get_logger().info(f"Received robot position: x={msg.position.x}, y={msg.position.y}")
 
     def get_robot_position(self):
         return self.robot_position
+    
+    def send_task_record_request(self, status, address):
+        request = TaskRecord.Request()
+        request.status = status
+        request.address = address
+
+        future = self.task_record_client.call_async(request)
+        future.add_done_callback(self.task_record_response_callback)
+
+    def task_record_response_callback(self, future):
+        try:
+            response = future.result()
+            if response.success:
+                self.get_logger().info('TaskRecord service call successful.')
+            else:
+                self.get_logger().info('TaskRecord service call failed.')
+        except Exception as e:
+            self.get_logger().error(f'Service call failed: {e}')
 
     # navigation action service
     def nav_send_goal(self, waypoint):
@@ -111,8 +136,12 @@ class DeliveryActionClient(Node):
         feedback = feedback_msg.feedback
         self.get_logger().info(f'Received feedback: Status: {feedback.status}')
 
-def main(args=None):
-    user_input = input("\nHi! I am XiaoZhi~ Do you need any delivery?\n")
+def main(user_input=None, args=None):
+    if user_input is None and len(sys.argv) > 1:
+        user_input = sys.argv[1]
+    elif user_input is None:
+        user_input = input("\nHi! I am XiaoZhi~ Do you need any delivery?\n")
+
     response = LLMAgent.call_llm(user_input)
     building_ids, unit_ids, building_coords, unit_coords = LLMAgent.extract_coordinates(response)
 
@@ -129,6 +158,9 @@ def main(args=None):
 
         rclpy.init(args=args)
         delivery_client = DeliveryActionClient()
+
+        # Start recording task
+        delivery_client.send_task_record_request('start', f'{unit_ids[i]}{building_ids[i]}')
 
         delivery_client.get_logger().info(f"Delivering to location {i}, please wait patiently!\n")
 
@@ -198,6 +230,12 @@ def main(args=None):
         delivery_client.get_logger().info("##########################################################")
 
         delivery_client.get_logger().info(f"Task completed!\n")
+
+        # End recording task
+        rclpy.init(args=args)
+        delivery_client = DeliveryActionClient()
+        delivery_client.send_task_record_request('end', f'location_{i}')
+        rclpy.spin_once(delivery_client, timeout_sec=1.0)
 
 if __name__ == '__main__':
     main()

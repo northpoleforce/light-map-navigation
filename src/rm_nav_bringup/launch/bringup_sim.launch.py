@@ -4,7 +4,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction, Shutdown
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
@@ -124,14 +124,16 @@ def generate_launch_description():
         ],
         remappings=[
             ('/imu/data_raw', '/livox/imu'),
-        ]
+        ],
+        on_exit=Shutdown()
     )
 
     bringup_linefit_ground_segmentation_node = Node(
         package='linefit_ground_segmentation_ros',
         executable='ground_segmentation_node',
         output='screen',
-        parameters=[segmentation_params]
+        parameters=[segmentation_params],
+        on_exit=Shutdown()
     )
 
     bringup_pointcloud_to_laserscan_node = Node(
@@ -152,7 +154,8 @@ def generate_launch_description():
             'use_inf': True,
             'inf_epsilon': 1.0
         }],
-        name='pointcloud_to_laserscan'
+        name='pointcloud_to_laserscan',
+        on_exit=Shutdown()
     )
 
     bringup_LIO_group = GroupAction([
@@ -170,6 +173,7 @@ def generate_launch_description():
                 '--frame-id', 'odom',
                 '--child-frame-id', 'lidar_odom'
             ],
+            on_exit=Shutdown()
         ),
 
         GroupAction(
@@ -182,13 +186,15 @@ def generate_launch_description():
                     fastlio_mid360_params,
                     {use_sim_time: use_sim_time}
                 ],
-                output='screen'
+                output='screen',
+                on_exit=Shutdown()
             ),
             Node(
                 package='rviz2',
                 executable='rviz2',
                 arguments=['-d', fastlio_rviz_cfg_dir],
                 condition = IfCondition(use_lio_rviz),
+                on_exit=Shutdown()
             ),
         ]),
 
@@ -214,12 +220,14 @@ def generate_launch_description():
                     'ivox_nearby_type': 26,   # Options: 0, 6, 18, 26
                     'runtime_pos_log_enable': False}
                 ],
+                on_exit=Shutdown()
             ),
             Node(
                 package='rviz2',
                 executable='rviz2',
                 arguments=['-d', pointlio_rviz_cfg_dir],
                 condition = IfCondition(use_lio_rviz),
+                on_exit=Shutdown()
             )
         ])
     ])
@@ -238,6 +246,7 @@ def generate_launch_description():
                     'map_file_name': slam_toolbox_map_dir,
                     'map_start_pose': [0.0, 0.0, 0.0]}
                 ],
+                on_exit=Shutdown()
             ),
 
             IncludeLaunchDescription(
@@ -261,6 +270,7 @@ def generate_launch_description():
                             {'use_sim_time': use_sim_time,
                                 'pcd_path': icp_pcd_dir}
                         ],
+                        on_exit=Shutdown()
                         # arguments=['--ros-args', '--log-level', ['icp_registration:=', 'DEBUG']]
                     )
                 ]
@@ -284,7 +294,8 @@ def generate_launch_description():
         parameters=[{
             'use_sim_time': use_sim_time,
             'spin_speed': 5.0 # rad/s
-        }]
+        }],
+        on_exit=Shutdown()
     )
 
     start_mapping = Node(
@@ -296,6 +307,7 @@ def generate_launch_description():
             slam_toolbox_mapping_file_dir,
             {'use_sim_time': use_sim_time,}
         ],
+        on_exit=Shutdown()
     )
 
     start_navigation2 = IncludeLaunchDescription(
