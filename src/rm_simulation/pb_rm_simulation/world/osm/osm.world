@@ -11792,10 +11792,10 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <state world_name='default'>
-      <sim_time>11577 841000000</sim_time>
-      <real_time>104 402557493</real_time>
-      <wall_time>1723785250 697701843</wall_time>
-      <iterations>104018</iterations>
+      <sim_time>11660 367000000</sim_time>
+      <real_time>82 819759577</real_time>
+      <wall_time>1724114654 930221130</wall_time>
+      <iterations>82526</iterations>
       <model name='ambulance_72'>
         <pose>63.99 7.06 0 0 0 -2.14</pose>
         <scale>1 1 1</scale>
@@ -11842,8 +11842,8 @@
         <link name='link'>
           <pose>-32 8 0.149 0 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>-0 -1.9e-05 0 0.000128 -2e-06 0</acceleration>
-          <wrench>-1e-06 -3.8e-05 1e-06 0 -0 0</wrench>
+          <acceleration>0 1.9e-05 -0 -0.000128 2e-06 0</acceleration>
+          <wrench>1e-06 3.8e-05 -1e-06 0 -0 0</wrench>
         </link>
       </model>
       <model name='dumpster_94'>
@@ -11852,8 +11852,8 @@
         <link name='link'>
           <pose>15.94 -13.63 0.000917 -0 -2e-06 3.14</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0.006033 -1e-05 -0 0.010454 0.280674 4e-06</acceleration>
-          <wrench>0.006033 -1e-05 -0 0 -0 0</wrench>
+          <acceleration>0.006033 -1e-05 0 0.010454 0.280674 4e-06</acceleration>
+          <wrench>0.006033 -1e-05 0 0 -0 0</wrench>
         </link>
       </model>
       <model name='fast_food_93'>
@@ -13784,16 +13784,6 @@
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
       </model>
-      <model name='text_model1_11'>
-        <pose>62.2884 -28.611 1.50257 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>62.2884 -28.611 1.50257 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
       <model name='text_model1_12'>
         <pose>90.4123 -13.4171 2.00259 0 -0 0</pose>
         <scale>1 1 1</scale>
@@ -14190,7 +14180,7 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>-18.5375 -206.931 209.207 0 0.769802 1.35067</pose>
+        <pose>52.9581 -19.413 1.30669 0 0.229801 -1.08935</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -15298,54 +15288,6 @@
         <kinematic>0</kinematic>
       </link>
       <pose>-4.35234 -25.1903 0 0 -0 0</pose>
-    </model>
-    <model name='text_model1_11'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <mesh>
-              <scale>0.5 0.5 0.5</scale>
-              <uri>model://text_model1/meshes/fire2.dae</uri>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1.2</mu>
-                <mu2>1.2</mu2>
-              </ode>
-              <torsional>
-                <ode/>
-              </torsional>
-            </friction>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-          </surface>
-          <max_contacts>10</max_contacts>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <mesh>
-              <scale>0.5 0.5 0.5</scale>
-              <uri>model://text_model1/meshes/fire2.dae</uri>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://text_model1/materials/scripts</uri>
-              <uri>model://text_model1/materials/textures</uri>
-              <name>fire1/object</name>
-            </script>
-          </material>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>56.3787 -20.7192 0 0 -0 0</pose>
     </model>
     <model name='text_model1_12'>
       <static>1</static>
