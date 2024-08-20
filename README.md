@@ -8,10 +8,11 @@
 
 | **Topic name**      | **Type**                        | **Note**                         |
 |:-------------------:|:-------------------------------:|:--------------------------------:|
-| /livox/lidar             | livox_ros_driver2/msg/CustomMsg | Mid360 自定义消息类型   |
-| /livox/lidar/pointcloud | sensor_msgs/msg/PointCloud2     | ROS2 点云消息类型                      |
-| /livox/imu                | sensor_msgs/msg/Imu             | Gazebo 插件仿真 IMU                  |
-| /cmd_vel            | geometry_msgs/msg/Twist         | 差速小车运动控制接口                |
+| /camera_sensor/image_raw |      sensor_msgs/msg/Image      |     相机消息类型      |
+|       /livox/lidar       | livox_ros_driver2/msg/CustomMsg | Mid360 自定义消息类型 |
+| /livox/lidar/pointcloud  |   sensor_msgs/msg/PointCloud2   |     点云消息类型      |
+|        /livox/imu        |       sensor_msgs/msg/Imu       |  Gazebo 插件仿真 IMU  |
+| /cmd_vel | geometry_msgs/msg/Twist | 差速小车运动控制接口 |
 
 ### 1.2 架构图
 
@@ -65,7 +66,9 @@
 1. 克隆仓库
 
     ```sh
-    git clone --recursive https://github.com/EI-Nav/light-map-navigation.git --depth=1
+    git clone https://github.com/EI-Nav/light-map-navigation.git --depth=1
+    git submodule init
+    git submodule update
     ```
 
 2. 安装 [Livox SDK2](https://github.com/Livox-SDK/Livox-SDK2)
