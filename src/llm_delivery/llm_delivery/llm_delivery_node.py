@@ -45,6 +45,14 @@ class DeliveryActionClient(Node):
         # self.get_logger().info(f"Received robot position: x={msg.position.x}, y={msg.position.y}")
 
     def get_robot_position(self):
+        # 转换为秒数和纳秒数
+        # current_time = self.get_clock().now()
+        # seconds = current_time.seconds_nanoseconds()[0]
+        # nanoseconds = current_time.seconds_nanoseconds()[1]
+        # print(seconds)
+        # transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        # self.robot_position = [transform.transform.translation.x, transform.transform.translation.y]
+        
         return self.robot_position
     
     def send_task_record_request(self, status, address):

@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'llm_delivery_node = llm_delivery.llm_delivery_node:main'
+            'llm_delivery_node = llm_delivery.llm_delivery_node:main',
+            'robot_pose_pub_node = llm_delivery.robot_pose_pub_node:main'
         ],
     },
 )

@@ -72,12 +72,16 @@ do
   sleep 1
   
   echo "Starting delivery service node with parameter: $line"
+
+  ros2 run llm_delivery robot_pose_pub_node &
+
+  sleep 1
   
   # 启动配送服务节点并传递当前的指令
   ros2 run llm_delivery llm_delivery_node "$line" &
   
   # 等待配送任务完成
-  sleep 300  # 可根据实际任务的耗时调整
+  sleep 600  # 可根据实际任务的耗时调整
   
   echo "Stopping exploration nodes and simulation environment..."
 
