@@ -2,7 +2,7 @@
   ros__parameters:
     use_sim_time: false 
     rough_leaf_size: 0.4
-    refine_leaf_size: 0.1
+    refine_leaf_size: 0.2
     pcd_path: "/home/zcf/Downloads/RMUL.pcd"
     map_frame_id: "map"
     odom_frame_id: "odom"

@@ -7,10 +7,14 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/extract_indices.h>
 #include <rclcpp/qos.hpp>
 #include <stdexcept>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/create_timer_ros.h>
+
+#include "cloud_registration.h"
 
 namespace icp {
 
@@ -35,14 +39,13 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
   }
   // Read the pcd file
   pcl::PCDReader reader;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
-      new pcl::PointCloud<pcl::PointXYZI>);
-  reader.read(pcd_path_, *cloud);
-  voxel_refine_filter_.setInputCloud(cloud);
-  voxel_refine_filter_.filter(*cloud);
+  map_.reset(new pcl::PointCloud<pcl::PointXYZI>);
+  reader.read(pcd_path_, *map_);
+  voxel_refine_filter_.setInputCloud(map_);
+  voxel_refine_filter_.filter(*map_);
 
   // Add normal to the pointcloud
-  refine_map_ = addNorm(cloud);
+  refine_map_ = addNorm(map_);
   pcl::PointCloud<pcl::PointXYZI>::Ptr point_rough(
       new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PointCloud<pcl::PointXYZI>::Ptr filterd_point_rough(
@@ -51,12 +54,6 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
   voxel_rough_filter_.setInputCloud(point_rough);
   voxel_rough_filter_.filter(*filterd_point_rough);
   rough_map_ = addNorm(filterd_point_rough);
-
-  icp_rough_.setMaximumIterations(rough_iter_);
-  icp_rough_.setInputTarget(rough_map_);
-
-  icp_refine_.setMaximumIterations(refine_iter_);
-  icp_refine_.setInputTarget(refine_map_);
 
   RCLCPP_INFO(this->get_logger(), "pcd point size: %ld, %ld",
               refine_map_->size(), rough_map_->size());
@@ -180,6 +177,18 @@ void IcpNode::initialPoseCallback(
   initial_guess.block<3, 3>(0, 0) = q.toRotationMatrix();
   initial_guess.block<3, 1>(0, 3) = pos;
   initial_guess(3, 3) = 1;
+
+  // radius filter
+  segmented_map_.reset(new pcl::PointCloud<pcl::PointXYZI>);
+  // 遍历点云中的所有点，保留在给定范围内的点
+  float radius = 100.0;
+  for (const auto& point : map_->points) {
+      float distance = std::sqrt((point.x - pos[0]) * (point.x - pos[0]) +
+                                  (point.y - pos[1]) * (point.y - pos[1]));
+      if (distance <= radius) {
+          segmented_map_->points.push_back(point);
+      }
+  }
 
   // Align the pointcloud
   RCLCPP_INFO(this->get_logger(), "Aligning the pointcloud");
@@ -321,47 +330,26 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
   voxel_refine_filter_.setInputCloud(source);
   voxel_refine_filter_.filter(*refine_source);
 
-  PointCloudXYZIN::Ptr rough_source_norm = addNorm(rough_source);
-  PointCloudXYZIN::Ptr refine_source_norm = addNorm(refine_source);
-  PointCloudXYZIN::Ptr align_point(new PointCloudXYZIN);
-
-  Eigen::Matrix4f best_rough_transform;
-  double best_rough_score = 10.0;
-  bool rough_converge = false;
   auto tic = std::chrono::system_clock::now();
-  for (Eigen::Matrix4f &init_pose : candidates) {
-    icp_rough_.setInputSource(rough_source_norm);
-    icp_rough_.align(*align_point, init_pose);
-    if (!icp_rough_.hasConverged())
-      continue;
-    double rough_score = icp_rough_.getFitnessScore();
-    if (rough_score > 2 * thresh_)
-      continue;
-    if (rough_score < best_rough_score) {
-      best_rough_score = rough_score;
-      rough_converge = true;
-      best_rough_transform = icp_rough_.getFinalTransformation();
-    }
-  }
 
-  if (!rough_converge)
-    return Eigen::Matrix4d::Zero();
+  // ground alignment
+  auto Tg = GroundAlignment(cloud_in_, segmented_map_);
 
-  icp_refine_.setInputSource(refine_source_norm);
-  icp_refine_.align(*align_point, best_rough_transform);
-  score_ = icp_refine_.getFitnessScore();
+  std::cout << Tg.matrix() << std::endl;
 
-  if (!icp_refine_.hasConverged())
-    return Eigen::Matrix4d::Zero();
-  if (score_ > thresh_)
-    return Eigen::Matrix4d::Zero();
+  wts_sensor_calib::CloudRegistration cloud_reg;
+
+  double score;
+  auto T = cloud_reg.FastVGICP(rough_source, segmented_map_, init_guess.cast<float>() * Tg.matrix().cast<float>(), score);
+
+  auto final_T = cloud_reg.FastGICP(refine_source, segmented_map_, T);
+
   success_ = true;
   auto toc = std::chrono::system_clock::now();
   std::chrono::duration<double> duration = toc - tic;
   RCLCPP_INFO(this->get_logger(), "align used: %f ms", duration.count() * 1000);
-  RCLCPP_INFO(this->get_logger(), "score: %f", score_);
 
-  return icp_refine_.getFinalTransformation().cast<double>();
+  return final_T.cast<double>();
 }
 
 PointCloudXYZIN::Ptr
@@ -379,6 +367,97 @@ IcpNode::addNorm(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud) {
   PointCloudXYZIN::Ptr out(new PointCloudXYZIN);
   pcl::concatenateFields(*cloud, *normals, *out);
   return out;
+}
+
+Eigen::Isometry3d
+IcpNode::GroundAlignment(const PointCloudXYZI::Ptr &source_cloud,
+                         const PointCloudXYZI::Ptr &target_cloud) {
+  Eigen::Vector4d source_ground_model;
+  GroundExtraction(source_cloud, source_ground_model);
+  Eigen::Vector4d target_ground_model;
+  GroundExtraction(target_cloud, target_ground_model);
+
+  Eigen::Vector3d vec_before, vec_after;
+  vec_before << source_ground_model[0], source_ground_model[1],
+      source_ground_model[2];
+  vec_after << target_ground_model[0], target_ground_model[1],
+      target_ground_model[2];
+
+  Eigen::Matrix3d rot_mat =
+      Eigen::Quaterniond::FromTwoVectors(vec_before, vec_after)
+          .toRotationMatrix();
+
+  Eigen::Isometry3d T_target_source = Eigen::Isometry3d::Identity();
+  T_target_source.linear() = rot_mat;
+  T_target_source.translation().z() =
+      source_ground_model[3] - target_ground_model[3];
+
+  return T_target_source;
+}
+
+void IcpNode::GroundExtraction(const PointCloudXYZI::Ptr &cloud,
+                               Eigen::Vector4d &ground_model) {
+  PointCloudXYZI::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>);
+
+  for (size_t i = 0; i < cloud->size(); ++i) {
+    const auto &p = cloud->points[i];
+    double distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    if (distance > 2 && distance < 20)
+      cloud_filtered->push_back(p);
+  }
+  // *cloud_filtered = *cloud;
+
+  pcl::ApproximateVoxelGrid<pcl::PointXYZI> downsample;
+  downsample.setLeafSize(0.2f, 0.2f, 0.2f);
+  downsample.setInputCloud(cloud_filtered);
+  downsample.filter(*cloud_filtered);
+
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+
+  pcl::SACSegmentation<pcl::PointXYZI> seg;
+  seg.setOptimizeCoefficients(true);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setAxis(Eigen::Vector3f(0, 0, 1));
+  seg.setEpsAngle(M_PI_4);
+  seg.setDistanceThreshold(0.1);
+
+  seg.setInputCloud(cloud_filtered);
+  seg.segment(*inliers, *coefficients);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr ground(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::ExtractIndices<pcl::PointXYZI> extract;
+  extract.setInputCloud(cloud_filtered);
+  extract.setIndices(inliers);
+  extract.setNegative(false);
+  extract.filter(*ground);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr non_ground(new pcl::PointCloud<pcl::PointXYZI>);
+  extract.setInputCloud(cloud_filtered);
+  extract.setIndices(inliers);
+  extract.setNegative(true);
+  extract.filter(*non_ground);
+
+  Eigen::Vector4f ground_centroid;
+  pcl::compute3DCentroid(*ground, ground_centroid);
+  Eigen::Vector4f non_ground_centroid;
+  pcl::compute3DCentroid(*non_ground, non_ground_centroid);
+
+  Eigen::Vector3d v;
+  v[0] = non_ground_centroid[0] - ground_centroid[0];
+  v[1] = non_ground_centroid[1] - ground_centroid[1];
+  v[2] = non_ground_centroid[2] - ground_centroid[2];
+  float dot_product = coefficients->values[0] * v[0] +
+                      coefficients->values[1] * v[1] +
+                      coefficients->values[2] * v[2];
+
+  if (dot_product > 0)
+    ground_model << coefficients->values[0], coefficients->values[1],
+        coefficients->values[2], coefficients->values[3];
+  else
+    ground_model << -coefficients->values[0], -coefficients->values[1],
+        -coefficients->values[2], -coefficients->values[3];
 }
 
 } // namespace icp

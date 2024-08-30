@@ -45,6 +45,12 @@ private:
   Eigen::Matrix4d multiAlignSync(PointCloudXYZI::Ptr source,
                                  const Eigen::Matrix4d &init_guess);
 
+  Eigen::Isometry3d GroundAlignment(const PointCloudXYZI::Ptr &source_cloud,
+                                    const PointCloudXYZI::Ptr &target_cloud);
+
+  void GroundExtraction(const PointCloudXYZI::Ptr &cloud,
+                        Eigen::Vector4d &ground_model);
+
   // ROS2 part
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
       initial_pose_sub_;
@@ -70,6 +76,8 @@ private:
 
   // Store
   PointCloudXYZI::Ptr cloud_in_;
+  PointCloudXYZI::Ptr map_;
+  PointCloudXYZI::Ptr segmented_map_;
   PointCloudXYZIN::Ptr refine_map_;
   PointCloudXYZIN::Ptr rough_map_;
   geometry_msgs::msg::TransformStamped map_to_odom_;

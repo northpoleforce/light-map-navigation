@@ -13,10 +13,58 @@ find_package(PCL REQUIRED QUIET)
 
 ament_auto_find_build_dependencies()
 
+add_library(ndt_omp SHARED
+    src/ndt_omp/voxel_grid_covariance_omp.cpp
+    src/ndt_omp/ndt_omp.cpp
+    )
+target_link_libraries(ndt_omp
+    ${PCL_LIBRARIES}
+    )
+target_include_directories(ndt_omp PUBLIC
+    include
+    ${PCL_INCLUDE_DIRS}
+    )
+
+add_library(fast_gicp SHARED
+    src/fast_gicp/gicp/lsq_registration.cpp
+    src/fast_gicp/gicp/fast_gicp.cpp
+    src/fast_gicp/gicp/fast_vgicp.cpp
+    )
+target_link_libraries(fast_gicp
+    ${PCL_LIBRARIES}
+    )
+if (OPENMP_FOUND)
+  if (TARGET OpenMP::OpenMP_CXX)
+    target_link_libraries(ndt_omp OpenMP::OpenMP_CXX)
+    target_link_libraries(fast_gicp OpenMP::OpenMP_CXX)
+  endif ()
+endif ()
+target_include_directories(fast_gicp PUBLIC
+    include
+    ${PCL_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
+    )
+
+add_library(registration SHARED
+    src/cloud_registration.cpp
+    )
+target_link_libraries(registration
+    ndt_omp
+    fast_gicp
+    )
+
+# add_library(icp_registration SHARED
+#     src/icp_registration.cpp
+#     )
+# target_link_libraries(icp_registration
+#     ${PCL_LIBRARIES}
+#     registration
+#     )
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  DIRECTORY src
+  src/icp_registration.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} registration)
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN icp::IcpNode
