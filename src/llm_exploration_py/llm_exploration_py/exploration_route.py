@@ -109,8 +109,9 @@ def print_ways(osm_file, tags, transformer, target_name, offset_distance, additi
 
 def execute_exploration(osm_file, target_name, offset_distance, additional_distance, robot_position):
     wgs84 = CRS.from_epsg(4326)
-    utm33n = CRS.from_epsg(32633)
-    transformer = Transformer.from_crs(wgs84, utm33n, always_xy=True)
+    utm = CRS.from_epsg(32633)  # 33n
+    #utm = CRS.from_epsg(32650) # 50n
+    transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
 
     waypoints_with_yaw = print_ways(osm_file, ["building"], transformer, target_name, offset_distance, additional_distance, robot_position)
 

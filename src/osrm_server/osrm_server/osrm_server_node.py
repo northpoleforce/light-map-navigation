@@ -12,8 +12,9 @@ from pyproj import CRS, Transformer
 
 # 将 Transformer 提取到全局变量中
 wgs84 = CRS.from_epsg(4326)
-utm33n = CRS.from_epsg(32633)
-transformer = Transformer.from_crs(wgs84, utm33n, always_xy=True)
+utm = CRS.from_epsg(32633)  # 33n
+#utm = CRS.from_epsg(32650) # 50n
+transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
 
 
 def get_route(start, end):

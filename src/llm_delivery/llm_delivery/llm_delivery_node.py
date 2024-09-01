@@ -22,8 +22,9 @@ class DeliveryActionClient(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.wgs84 = CRS.from_epsg(4326)
-        self.utm33n = CRS.from_epsg(32633)
-        self.transformer = Transformer.from_crs(self.utm33n, self.wgs84, always_xy=True)
+        self.utm = CRS.from_epsg(32633)  #33n
+        # self.utm = CRS.from_epsg(32650)  #50n
+        self.transformer = Transformer.from_crs(self.utm, self.wgs84, always_xy=True)
         self.current_waypoint_index = 0
         self.waypoints = []
 

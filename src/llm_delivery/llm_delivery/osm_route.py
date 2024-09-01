@@ -93,8 +93,9 @@ def wgs84_to_utm(lon, lat):
     """Convert WGS84 coordinates to UTM Zone 33N."""
     
     wgs84 = CRS.from_epsg(4326)
-    utm33n = CRS.from_epsg(32633)
-    transformer = Transformer.from_crs(wgs84, utm33n, always_xy=True)
+    utm = CRS.from_epsg(32633)  # 33n
+    #utm = CRS.from_epsg(32650) # 50n
+    transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
     x, y = transformer.transform(lon, lat)
     return x, y
 

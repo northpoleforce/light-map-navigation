@@ -114,8 +114,9 @@ if __name__ == "__main__":
     tags = ["building"]  # List of tags to process
 
     wgs84 = CRS.from_epsg(4326)
-    utm33n = CRS.from_epsg(32633)
-    transformer = Transformer.from_crs(wgs84, utm33n, always_xy=True)
+    utm = CRS.from_epsg(32633)  # 33n
+    #utm = CRS.from_epsg(32650) # 50n
+    transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
 
     handler = MapHandler(tags, transformer)
     handler.apply_file(osm_file)
