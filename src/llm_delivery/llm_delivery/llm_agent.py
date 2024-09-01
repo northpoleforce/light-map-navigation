@@ -17,6 +17,12 @@ building_coordinates = {
     "building16": (10.512097940, 0.000131020),
     "building17": (10.512033585, -0.000183692),
 }
+
+# for real-world
+# building_coordinates = {
+#     "building1": (116.416246613,39.971315650),
+# }
+
 units_coordinates = {
     "building1": {
         "unit1": (),
@@ -34,6 +40,17 @@ units_coordinates = {
         "unit2": (),
     },
 }
+
+# for real-world
+# units_coordinates = {
+#     "building1": {
+#         "unit1": (),
+#         "unit2": (),
+#         "unit3": (),
+#         "unit4": (),
+#         "unit5": (),
+#     }
+# }
 
 # user_input = "请帮我将苹果送至一号楼五单元，并且将橘子送至一号楼六单元。"    
 output_format =  """
