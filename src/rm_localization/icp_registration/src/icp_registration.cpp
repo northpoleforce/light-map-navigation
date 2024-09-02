@@ -340,7 +340,7 @@ Eigen::Matrix4d IcpNode::multiAlignSync(PointCloudXYZI::Ptr source,
   wts_sensor_calib::CloudRegistration cloud_reg;
 
   double score;
-  auto T = cloud_reg.FastVGICP(rough_source, segmented_map_, init_guess.cast<float>() * Tg.matrix().cast<float>(), score);
+  auto T = cloud_reg.FastVGICP(rough_source, segmented_map_, init_guess.cast<float>(), score);
 
   auto final_T = cloud_reg.FastGICP(refine_source, segmented_map_, T);
 
@@ -402,7 +402,7 @@ void IcpNode::GroundExtraction(const PointCloudXYZI::Ptr &cloud,
   for (size_t i = 0; i < cloud->size(); ++i) {
     const auto &p = cloud->points[i];
     double distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-    if (distance > 2 && distance < 20)
+    if (distance > 2 && distance < 50)
       cloud_filtered->push_back(p);
   }
   // *cloud_filtered = *cloud;
