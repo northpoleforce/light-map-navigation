@@ -8,7 +8,7 @@ import tf2_ros
 from math import radians, cos, sin, atan2
 import geometry_msgs.msg
 from pyproj import CRS, Transformer
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 
 real_world_flag = False
@@ -58,13 +58,14 @@ def get_route(start, end, plot_route=False):
             utm_x1, utm_y1 = wgs84_to_utm(lon1, lat1)
             utm_x2, utm_y2 = wgs84_to_utm(lon2, lat2)
 
-            transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
-            point1 = np.array([utm_x1, utm_y1, 1])
-            point2 = np.array([utm_x2, utm_y2, 1])
-            point1 = np.dot(transform_matrix, point1)
-            point2 = np.dot(transform_matrix, point2)
-            utm_x1, utm_y1 = point1[:2]
-            utm_x2, utm_y2 = point2[:2]
+            if real_world_flag is True:
+                transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
+                point1 = np.array([utm_x1, utm_y1, 1])
+                point2 = np.array([utm_x2, utm_y2, 1])
+                point1 = np.dot(transform_matrix, point1)
+                point2 = np.dot(transform_matrix, point2)
+                utm_x1, utm_y1 = point1[:2]
+                utm_x2, utm_y2 = point2[:2]
             
             pose = PoseStamped()
             pose.header.frame_id = 'map'
