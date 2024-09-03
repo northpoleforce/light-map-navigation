@@ -1,4 +1,5 @@
 import os
+import re
 import json
 from dashscope import MultiModalConversation
 
@@ -44,10 +45,22 @@ def check_unit(image_path, target_unit_number, prompt_file=None):
     assistant_output = get_response(messages).output.choices[0]['message']['content']
     messages.append({'role': 'assistant', 'content': assistant_output})
 
+    print(assistant_output[0]['text'])
+
     # Extract the unit_number from the assistant_output
     try:
         # Parse the JSON string within the text field
-        response_content = json.loads(assistant_output[0]['text'])
+        response_content = assistant_output[0]['text']
+
+        json_match = re.search(r'\{.*?\}', response_content, re.DOTALL)
+        # 提取并解析 JSON
+        if json_match:
+            json_str = json_match.group(0)
+            response_content = json.loads(json_str)
+            print(response_content)
+        else:
+            print("No JSON found in the text.")
+
         # Access the unit_number
         unit_number = response_content.get('unit_number')
         print(f"Extracted unit_number: {unit_number}")

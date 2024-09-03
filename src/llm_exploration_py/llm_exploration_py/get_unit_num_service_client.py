@@ -24,7 +24,7 @@ def main(args=None):
     client = CheckUnitNumberClient()
     
     # 这里指定目标单元楼号进行测试
-    desire_num = '1'
+    desire_num = '2'
     response = client.send_request(desire_num)
     
     client.get_logger().info(f'Result: {response.result}')
