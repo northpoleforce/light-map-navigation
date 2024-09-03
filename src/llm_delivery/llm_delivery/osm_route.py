@@ -8,11 +8,18 @@ import tf2_ros
 from math import radians, cos, sin, atan2
 import geometry_msgs.msg
 from pyproj import CRS, Transformer
+import matplotlib.pyplot as plt
+import numpy as np
 
-def get_route(start, end):
-    """Fetch route from OSRM and convert to waypoints in UTM Zone 33N."""
+real_world_flag = False
+
+def get_route(start, end, plot_route=False):
+    """Fetch route from OSRM and convert to waypoints in UTM Zone. Optionally plot the route."""
     
-    osrm_url = "http://waytous.tajiyu.com:5001/route/v1/driving/"
+    if real_world_flag is False:
+        osrm_url = "http://waytous.tajiyu.com:5001/route/v1/driving/"
+    else:
+        osrm_url = "http://101.200.33.217:5002/route/v1/driving/"
     
     # Construct request URL for OSRM
     request_url = f"{osrm_url}{start};{end}"
@@ -41,12 +48,23 @@ def get_route(start, end):
         coordinates = route['geometry']['coordinates']
         coordinates.append([end_lon, end_lat])
         
+        if plot_route:
+            plot_path_in_utm(coordinates)  # Plot the path in UTM coordinates if requested
+        
         for i in range(len(coordinates) - 1):
             lon1, lat1 = coordinates[i]
             lon2, lat2 = coordinates[i + 1]
             
             utm_x1, utm_y1 = wgs84_to_utm(lon1, lat1)
             utm_x2, utm_y2 = wgs84_to_utm(lon2, lat2)
+
+            transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
+            point1 = np.array([utm_x1, utm_y1, 1])
+            point2 = np.array([utm_x2, utm_y2, 1])
+            point1 = np.dot(transform_matrix, point1)
+            point2 = np.dot(transform_matrix, point2)
+            utm_x1, utm_y1 = point1[:2]
+            utm_x2, utm_y2 = point2[:2]
             
             pose = PoseStamped()
             pose.header.frame_id = 'map'
@@ -65,6 +83,29 @@ def get_route(start, end):
         print("No valid navigation path found")
     
     return waypoints
+
+def plot_path_in_utm(coordinates):
+    """Plot the path on a 2D plot using UTM coordinates."""
+    utm_x, utm_y = [], []
+    
+    for lon, lat in coordinates:
+        x, y = wgs84_to_utm(lon, lat)
+
+        transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
+        point1 = np.array([x, y, 1])
+        point1 = np.dot(transform_matrix, point1)
+        x, y = point1[:2]
+
+        utm_x.append(x)
+        utm_y.append(y)
+    
+    plt.figure(figsize=(10, 8))
+    plt.plot(utm_x, utm_y, marker='o', color='blue', linewidth=2, markersize=5)
+    plt.title("Navigation Path in UTM Coordinates")
+    plt.xlabel("UTM X (meters)")
+    plt.ylabel("UTM Y (meters)")
+    plt.grid(True)
+    plt.show()
 
 def euler_to_quaternion(yaw):
     """Convert yaw angle to quaternion."""
@@ -93,8 +134,10 @@ def wgs84_to_utm(lon, lat):
     """Convert WGS84 coordinates to UTM Zone 33N."""
     
     wgs84 = CRS.from_epsg(4326)
-    utm = CRS.from_epsg(32633)  # 33n
-    #utm = CRS.from_epsg(32650) # 50n
+    if real_world_flag is False:
+        utm = CRS.from_epsg(32633)  # UTM Zone 33N
+    else:
+        utm = CRS.from_epsg(32650)  # UTM Zone 50N
     transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
     x, y = transformer.transform(lon, lat)
     return x, y
@@ -105,9 +148,9 @@ def main():
     rclpy.init()
     navigator = BasicNavigator()
 
-    start = "10.511509522,-0.000094233"
-    end = "10.511010327,0.000235218"
-    waypoints = get_route(start, end)
+    start = "116.41368627548219,39.970421972970726"
+    end = "116.4164078231261,39.97122775625219"
+    waypoints = get_route(start, end, plot_route=True)  # Enable route plotting
 
     print(f"Number of waypoints: {len(waypoints)}")
 
