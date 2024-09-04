@@ -10,6 +10,7 @@ import llm_delivery.osm_route as OsmRoute
 from tf2_ros import TransformListener, Buffer
 from custom_interfaces.action import FindUnit
 from custom_interfaces.srv import TaskRecord
+import numpy as np
 import sys
 
 real_world_flag = False

@@ -7,6 +7,7 @@ from custom_interfaces.srv import GetUnitNum
 from geometry_msgs.msg import PoseStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import llm_exploration_py.exploration_route as expRoute
+import numpy as np
 
 class LlmExplorationNode(Node):
     def __init__(self):
@@ -133,7 +134,7 @@ class LlmExplorationNode(Node):
         try:
             self.waypoint_ = expRoute.execute_exploration(
                 '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/osm_world.osm',
-                self.building_id, 2, 5, self.cur_position
+                self.building_id, 3, 5, self.cur_position
             )
         except Exception as e:
             self.get_logger().error(f"Failed to get waypoints: {str(e)}")

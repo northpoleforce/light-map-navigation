@@ -82,7 +82,7 @@ private:
   PointCloudXYZIN::Ptr rough_map_;
   geometry_msgs::msg::TransformStamped map_to_odom_;
   std::filesystem::path pcd_path_;
-  std::string map_frame_id_, odom_frame_id_, range_odom_frame_id_, laser_frame_id_;
+  std::string map_frame_id_, odom_frame_id_, livox_frame_id_, range_odom_frame_id_, laser_frame_id_;
   bool success_;
   double score_;
   double thresh_;

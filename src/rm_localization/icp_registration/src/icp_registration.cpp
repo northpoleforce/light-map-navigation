@@ -62,6 +62,7 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
   map_frame_id_ = this->declare_parameter("map_frame_id", std::string("map"));
   odom_frame_id_ =
       this->declare_parameter("odom_frame_id", std::string("odom"));
+  livox_frame_id_ = this->declare_parameter("livox_frame_id", std::string("livox_frame"));
   range_odom_frame_id_ =
       this->declare_parameter("range_odom_frame_id", std::string("lidar_odom"));
   laser_frame_id_ =
@@ -127,20 +128,44 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
       {
         std::lock_guard lock(mutex_);
         if (is_ready_) {
-            RCLCPP_DEBUG_STREAM(this->get_logger(),
-                     "Publishing tf"
-                       << map_to_odom_.transform.translation.x << " "
-                       << map_to_odom_.transform.translation.y << " "
-                       << map_to_odom_.transform.translation.z);
+          geometry_msgs::msg::TransformStamped odom_to_livox;
+          try {
+              odom_to_livox = tf_buffer_->lookupTransform(
+                  odom_frame_id_, livox_frame_id_, tf2::TimePointZero);
+          } catch (tf2::TransformException &ex) {
+              RCLCPP_WARN(this->get_logger(), "Could not transform %s to %s: %s", 
+                          odom_frame_id_.c_str(), livox_frame_id_.c_str(), ex.what());
+              continue;
+          }
+
+          tf2::Transform tf_map_to_odom;
+          tf2::fromMsg(map_to_odom_.transform, tf_map_to_odom);
+
+          tf2::Transform tf_odom_to_livox;
+          tf2::fromMsg(odom_to_livox.transform, tf_odom_to_livox);
+
+          tf2::Transform tf_map_to_livox = tf_map_to_odom * tf_odom_to_livox;
+
+          double z_offset = tf_map_to_livox.getOrigin().getZ();
+
+          map_to_odom_.transform.translation.z -= z_offset;
+
+          RCLCPP_DEBUG_STREAM(this->get_logger(),
+                              "Publishing adjusted tf with offset"
+                              << map_to_odom_.transform.translation.x << " "
+                              << map_to_odom_.transform.translation.y << " "
+                              << map_to_odom_.transform.translation.z);
+
           map_to_odom_.header.stamp = now();
           map_to_odom_.header.frame_id = map_frame_id_;
           map_to_odom_.child_frame_id = odom_frame_id_;
           tf_broadcaster_->sendTransform(map_to_odom_);
         }
       }
-      rate.sleep();
+        rate.sleep();
     }
   });
+
 
   RCLCPP_INFO(this->get_logger(), "icp_registration initialized");
 }
