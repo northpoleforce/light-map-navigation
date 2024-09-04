@@ -146,9 +146,14 @@ IcpNode::IcpNode(const rclcpp::NodeOptions &options)
 
           tf2::Transform tf_map_to_livox = tf_map_to_odom * tf_odom_to_livox;
 
-          double z_offset = tf_map_to_livox.getOrigin().getZ();
+          tf2::Vector3 origin = tf_map_to_livox.getOrigin();
+          origin.setZ(0.0);
+          tf_map_to_livox.setOrigin(origin);
 
-          map_to_odom_.transform.translation.z -= z_offset;
+          tf2::Transform tf_livox_to_odom = tf_odom_to_livox.inverse();
+          tf2::Transform adjusted_map_to_odom = tf_map_to_livox * tf_livox_to_odom;
+
+          map_to_odom_.transform = tf2::toMsg(adjusted_map_to_odom);
 
           RCLCPP_DEBUG_STREAM(this->get_logger(),
                               "Publishing adjusted tf with offset"
