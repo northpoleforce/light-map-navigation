@@ -8,6 +8,8 @@ import numpy as np
 from math import radians, cos, sin, atan2, sqrt
 import geometry_msgs.msg
 
+real_world_flag = False
+
 class MapHandler(osm.SimpleHandler):
     def __init__(self, tags, transformer, target_name):
         osm.SimpleHandler.__init__(self)
@@ -90,6 +92,11 @@ def print_ways(osm_file, tags, transformer, target_name, offset_distance, additi
         coordinates = []
         for node_id in handler.target_nodes:
             x, y = handler.nodes[node_id]
+            if real_world_flag is True:
+                transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
+                point = np.array([x, y, 1])
+                trans_point = np.dot(transform_matrix, point)
+                x, y = trans_point[:2]
             coordinates.append((x, y))
         if coordinates[0] != coordinates[-1]:
             coordinates.append(coordinates[0])
@@ -108,9 +115,11 @@ def print_ways(osm_file, tags, transformer, target_name, offset_distance, additi
         return []
 
 def execute_exploration(osm_file, target_name, offset_distance, additional_distance, robot_position):
+    if real_world_flag is True:
+        utm = CRS.from_epsg(32650) # 50n
+    else:
+        utm = CRS.from_epsg(32633)  # 33n
     wgs84 = CRS.from_epsg(4326)
-    utm = CRS.from_epsg(32633)  # 33n
-    #utm = CRS.from_epsg(32650) # 50n
     transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
 
     waypoints_with_yaw = print_ways(osm_file, ["building"], transformer, target_name, offset_distance, additional_distance, robot_position)

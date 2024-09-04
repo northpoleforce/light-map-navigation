@@ -12,6 +12,8 @@ from custom_interfaces.action import FindUnit
 from custom_interfaces.srv import TaskRecord
 import sys
 
+real_world_flag = False
+
 class DeliveryActionClient(Node):
     def __init__(self):
         super().__init__('delivery_action_client')
@@ -22,8 +24,10 @@ class DeliveryActionClient(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.wgs84 = CRS.from_epsg(4326)
-        self.utm = CRS.from_epsg(32633)  #33n
-        # self.utm = CRS.from_epsg(32650)  #50n
+        if real_world_flag is True:
+            self.utm = CRS.from_epsg(32650)  #50n
+        else:
+            self.utm = CRS.from_epsg(32633)  #33n
         self.transformer = Transformer.from_crs(self.utm, self.wgs84, always_xy=True)
         self.current_waypoint_index = 0
         self.waypoints = []
@@ -42,18 +46,19 @@ class DeliveryActionClient(Node):
             self.get_logger().info('TaskRecord service not available, waiting...')
 
     def position_callback(self, msg):
-        self.robot_position = [msg.position.x, msg.position.y]
+        if real_world_flag is True:
+            transform_matrix = np.array([[1.0, 0.0, -449920.549610], [0.0, 1.0, -4424638.431542], [0.000000, 0.000000, 1.000000]])
+            transform_matrix = np.linalg.inv(transform_matrix)
+            x = msg.position.x
+            y = msg.position.y
+            point = np.array([x, y, 1])
+            trans_point = np.dot(transform_matrix, point)
+            self.robot_position = [trans_point[0], trans_point[1]]
+        else:
+            self.robot_position = [msg.position.x, msg.position.y]
         # self.get_logger().info(f"Received robot position: x={msg.position.x}, y={msg.position.y}")
 
     def get_robot_position(self):
-        # 转换为秒数和纳秒数
-        # current_time = self.get_clock().now()
-        # seconds = current_time.seconds_nanoseconds()[0]
-        # nanoseconds = current_time.seconds_nanoseconds()[1]
-        # print(seconds)
-        # transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-        # self.robot_position = [transform.transform.translation.x, transform.transform.translation.y]
-        
         return self.robot_position
     
     def send_task_record_request(self, status, address):
@@ -233,6 +238,7 @@ def main(user_input=None, args=None):
                 delivery_client.get_logger().error(f"Error occurred: {e}")
 
             finally:
+                delivery_client.send_task_record_request('end', f'location_{i}')
                 if rclpy.ok():
                     rclpy.shutdown()
         
@@ -241,10 +247,10 @@ def main(user_input=None, args=None):
         delivery_client.get_logger().info(f"Task completed!\n")
 
         # End recording task
-        rclpy.init(args=args)
-        delivery_client = DeliveryActionClient()
-        delivery_client.send_task_record_request('end', f'location_{i}')
-        rclpy.spin_once(delivery_client, timeout_sec=1.0)
+        # rclpy.init(args=args)
+        # delivery_client = DeliveryActionClient()
+        # delivery_client.send_task_record_request('end', f'location_{i}')
+        # rclpy.spin_once(delivery_client, timeout_sec=1.0)
 
 if __name__ == '__main__':
     main()
