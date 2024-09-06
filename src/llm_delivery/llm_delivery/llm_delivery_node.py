@@ -68,7 +68,17 @@ class DeliveryActionClient(Node):
         request.address = address
 
         future = self.task_record_client.call_async(request)
-        future.add_done_callback(self.task_record_response_callback)
+        # future.add_done_callback(self.task_record_response_callback)
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result() is not None:
+            response = future.result()
+            if response.success:
+                self.get_logger().info('TaskRecord service call successful.')
+            else:
+                self.get_logger().info('TaskRecord service call failed.')
+        else:
+            self.get_logger().error('TaskRecord service call failed, future did not return a result.')
 
     def task_record_response_callback(self, future):
         try:
@@ -217,7 +227,7 @@ def main(user_input=None, args=None):
 
         delivery_client.get_logger().info("#################### Exploration Step ####################")
 
-        if exploration_flag:
+        if exploration_flag is True:
             try:
                 while rclpy.ok() and delivery_client.get_robot_position() is None:
                     rclpy.spin_once(delivery_client, timeout_sec=1.0)
@@ -235,11 +245,12 @@ def main(user_input=None, args=None):
                 delivery_client.expl_send_goal(building_ids[i][0], unit_ids[i][0][-1:], curr_robot_position[0], curr_robot_position[1])
                 rclpy.spin(delivery_client)
 
+                delivery_client.send_task_record_request('end', f'location_{i}')
+
             except Exception as e:
                 delivery_client.get_logger().error(f"Error occurred: {e}")
 
             finally:
-                delivery_client.send_task_record_request('end', f'location_{i}')
                 if rclpy.ok():
                     rclpy.shutdown()
         

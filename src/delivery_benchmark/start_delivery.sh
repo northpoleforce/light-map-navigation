@@ -1,5 +1,7 @@
 #!/bin/bash
 
+apt install psmisc -y
+
 # 检查是否提供了参数文件路径
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <path_to_params_file>"

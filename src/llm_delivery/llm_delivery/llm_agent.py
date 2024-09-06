@@ -21,6 +21,7 @@ building_coordinates = {
 # for real-world
 # building_coordinates = {
 #     "building1": (116.416246613,39.971315650),
+#     "building2": (116.415284417,39.972169284),
 # }
 
 units_coordinates = {
@@ -78,15 +79,23 @@ output_format =  """
             "building_coordinates": [10.511010327, 0.000235218],
             "unit_ids": ["unit5"],
             "specific_unit_coordinates_at_this_building": ["unknown"],
-            "unit_coordinates": [3.8933, 4.3390]
+            "unit_coordinates": []
         },
         {
             "item": "待配送物品",
-            "destination": "building7",
+            "building_ids": "building7",
             "building_coordinates": [10.511262554, 0.000258062],
             "unit_ids": ["unit1"],
             "specific_unit_coordinates_at_this_building": ["unknown"],
-            "unit_coordinates": []
+            "unit_coordinates": [9.50, 25.45]
+        },
+        {
+            "item": "待配送物品",
+            "building_ids": "building12",
+            "building_coordinates": [10.511262554, 0.000258062],
+            "unit_ids": ["unit2"],
+            "specific_unit_coordinates_at_this_building": ["unknown"],
+            "unit_coordinates": [-2.59, -27.03]
         }
     ]
 }
@@ -172,7 +181,8 @@ def extract_coordinates(input_json):
     return all_building_ids, all_unit_ids, all_building_coordinates, all_unit_coordinates
 
 # 示例用法
-# input_json = call_gpt4o_mini_llm(user_input)
+# user_input = "Please deliver this package into unit2, building16."
+# input_json = call_llm(user_input)
 # building_coords, unit_coords = extract_coordinates(input_json)
 # print(building_coords)
 # print(unit_coords)

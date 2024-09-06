@@ -7,12 +7,13 @@ import math
 import re
 
 class MapHandler(osm.SimpleHandler):
-    def __init__(self, tags, transformer):
+    def __init__(self, tags, transformer, reverse_transformer):
         osm.SimpleHandler.__init__(self)
         self.nodes = {}
         self.ways = []
         self.tags = tags
         self.transformer = transformer
+        self.reverse_transformer = reverse_transformer
 
     def node(self, n):
         lon, lat = n.location.lon, n.location.lat
@@ -93,18 +94,26 @@ def replace_model_names(models):
             replaced_models.append(model_name)
     return replaced_models
 
-def print_building_assignments(building_assignments):
+def print_building_assignments(building_assignments, handler):
     sorted_buildings = sorted(building_assignments.items(), key=lambda x: int(re.search(r'\d+', x[0]).group()))
 
     for building, models in sorted_buildings:
         replaced_models = replace_model_names([(name, pos) for name, pos in models])
         model_positions = [f"({pos[0]:.2f}, {pos[1]:.2f})" for _, pos in models]
         print(f'"{building}": {replaced_models},')
-    
+
+    print("\nUTM Coordinates:")
     for building, models in sorted_buildings:
-        replaced_models = replace_model_names([(name, pos) for name, pos in models])
         model_positions = [f"({pos[0]:.2f}, {pos[1]:.2f})" for _, pos in models]
         print(f'"{building}_coords": {model_positions},')
+
+    print("\nWGS84 Coordinates:")
+    for building, models in sorted_buildings:
+        wgs84_positions = []
+        for _, pos in models:
+            lon, lat = handler.reverse_transformer.transform(pos[0], pos[1])
+            wgs84_positions.append(f"({lon:.9f}, {lat:.9f})")
+        print(f'"{building}_coords_wgs84": {wgs84_positions},')
 
 if __name__ == "__main__":
     osm_file = sys.argv[1]  # Input OSM file
@@ -117,14 +126,15 @@ if __name__ == "__main__":
     utm = CRS.from_epsg(32633)  # 33n
     #utm = CRS.from_epsg(32650) # 50n
     transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
+    reverse_transformer = Transformer.from_crs(utm, wgs84, always_xy=True)
 
-    handler = MapHandler(tags, transformer)
+    handler = MapHandler(tags, transformer, reverse_transformer)
     handler.apply_file(osm_file)
 
     matching_models_positions = get_all_matching_model_positions(sdf_file, text_model)
 
     if matching_models_positions:
         building_assignments = assign_models_to_buildings(handler.ways, matching_models_positions, handler)
-        print_building_assignments(building_assignments)
+        print_building_assignments(building_assignments, handler)
     else:
         print(f"No models found containing '{text_model}' with z > 0")

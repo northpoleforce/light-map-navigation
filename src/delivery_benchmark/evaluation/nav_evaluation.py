@@ -5,6 +5,8 @@ def extract_end_records(file_path):
     """从CSV文件中提取结束记录，并计算每段轨迹的长度"""
     df = pd.read_csv(file_path)
 
+    print(len(df))
+
     end_records = []
     track_lengths = []
     current_track_length = 0.0
@@ -62,12 +64,41 @@ def calculate_success_rate(errors, threshold=10):
     success_rate = successes / total if total > 0 else 0
     return success_rate, successes, total
 
+def calculate_origin_distances(ground_truth):
+    """计算从(0, 0)到每个真值坐标的距离"""
+    origin_distances = []
+    for gt in ground_truth:
+        distance = sqrt(gt[0]**2 + gt[1]**2)
+        origin_distances.append(distance)
+    
+    return origin_distances
+
+def calculate_spl(track_lengths, origin_distances, errors, threshold=10):
+    """计算SPL指标"""
+    N = len(track_lengths)
+    if N == 0:
+        return 0  # No records to process
+
+    spl_sum = 0.0
+
+    for i in range(N):
+        S_i = 1 if errors[i] <= threshold else 0
+        p_i = track_lengths[i]
+        l_i = origin_distances[i]
+        ratio = l_i / max(p_i, l_i)
+        print(ratio)
+        spl_sum += S_i * ratio
+
+    spl = spl_sum / N
+    return spl
+
 # 使用方法：将file_path替换为你的文件路径
-csv_file_path = '/home/wjh/Study/light-map-navigation/src/delivery_benchmark/result/delivery_instructions.csv'
-txt_file_path = '/home/wjh/Study/light-map-navigation/src/delivery_benchmark/data/delivery_instructions_gt.txt'
+csv_file_path = '/home/wjh/Study/light-map-navigation/src/delivery_benchmark/result/delivery_instructions3.csv'
+txt_file_path = '/home/wjh/Study/light-map-navigation/src/delivery_benchmark/data/delivery_instructions_gt3.txt'
 
 # 从CSV文件提取结束记录和轨迹长度
 end_records, track_lengths = extract_end_records(csv_file_path)
+print(len(end_records))
 
 # 从结束记录中提取预测的坐标 (robot_x, robot_y)
 predicted_coordinates = [(record['robot_x'], record['robot_y']) for record in end_records]
@@ -78,13 +109,20 @@ ground_truth_coordinates = read_coordinates(txt_file_path)
 # 计算误差指标
 errors = calculate_metrics(predicted_coordinates, ground_truth_coordinates)
 
+# 计算从(0, 0)到每个真值坐标的距离
+origin_distances = calculate_origin_distances(ground_truth_coordinates)
+
 # 计算成功率
 success_rate, successes, total = calculate_success_rate(errors, threshold=10)
 
-# 打印误差、轨迹长度和成功率
-for i, (error, track_length) in enumerate(zip(errors, track_lengths)):
-    print(f"Record {i + 1}: Error = {error:.4f}, Track Length = {track_length:.4f}")
+# 计算spl指标
+spl = calculate_spl(track_lengths, origin_distances, errors, threshold=10)
+
+# 打印误差、轨迹长度、成功率、到(0, 0)的距离和spl
+for i, (error, track_length, origin_distance) in enumerate(zip(errors, track_lengths, origin_distances)):
+    print(f"Record {i + 1}: Error = {error:.4f}, Track Length = {track_length:.4f}, Distance to Origin = {origin_distance:.4f}")
 
 print(f"\nTotal Records: {total}")
 print(f"Successful Records: {successes}")
 print(f"Success Rate: {success_rate:.2%}")
+print(f"SPL: {spl:.4f}")
