@@ -1,0 +1,10 @@
+image: MEDIUM_OSM.pgm
+mode: trinary
+negate: 0
+origin:
+- -53.308155783917755
+- -52.40442805913558
+- 0.0
+resolution: 0.2
+occupied_thresh: 0.65
+free_thresh: 0.25

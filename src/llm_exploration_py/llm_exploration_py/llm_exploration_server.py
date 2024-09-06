@@ -133,7 +133,7 @@ class LlmExplorationNode(Node):
 
         try:
             self.waypoint_ = expRoute.execute_exploration(
-                '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/osm_world.osm',
+                '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/large.osm',
                 self.building_id, 3, 5, self.cur_position
             )
         except Exception as e:

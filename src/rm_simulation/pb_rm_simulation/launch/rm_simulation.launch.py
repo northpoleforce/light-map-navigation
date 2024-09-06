@@ -18,6 +18,8 @@ class WorldType:
     RMUC = 'RMUC'
     RMUL = 'RMUL'
     LARGE_OSM = 'LARGE_OSM'
+    MEDIUM_OSM = 'MEDIUM_OSM'
+    SMALL_OSM = 'SMALL_OSM'
 
 def get_world_config(world_type):
     world_configs = {
@@ -42,6 +44,20 @@ def get_world_config(world_type):
             'z': '0.1',
             'yaw': '0.0',
             'world_path': 'large_osm/large_osm.world'
+        },
+        WorldType.MEDIUM_OSM : {
+            'x': '0.0',
+            'y': '0.0',
+            'z': '0.1',
+            'yaw': '0.0',
+            'world_path': 'medium_osm/medium_osm.world'
+        },
+        WorldType.SMALL_OSM : {
+            'x': '0.0',
+            'y': '0.0',
+            'z': '0.1',
+            'yaw': '0.0',
+            'world_path': 'small_osm/small_osm.world'
         }
     }
     return world_configs.get(world_type, None)
@@ -155,6 +171,8 @@ def generate_launch_description():
     bringup_RMUC_cmd_group = create_gazebo_launch_group(WorldType.RMUC)
     bringup_RMUL_cmd_group = create_gazebo_launch_group(WorldType.RMUL)
     bringup_LARGE_OSM_cmd_group = create_gazebo_launch_group(WorldType.LARGE_OSM)
+    bringup_MEDIUM_OSM_cmd_group = create_gazebo_launch_group(WorldType.MEDIUM_OSM)
+    bringup_SMALL_OSM_cmd_group = create_gazebo_launch_group(WorldType.SMALL_OSM)
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -172,6 +190,8 @@ def generate_launch_description():
     ld.add_action(bringup_RMUL_cmd_group) # type: ignore
     ld.add_action(bringup_RMUC_cmd_group) # type: ignore
     ld.add_action(bringup_LARGE_OSM_cmd_group)
+    ld.add_action(bringup_MEDIUM_OSM_cmd_group)
+    ld.add_action(bringup_SMALL_OSM_cmd_group)
 
     # Uncomment this line if you want to start RViz
     ld.add_action(start_rviz_cmd)
