@@ -17,7 +17,7 @@ from launch.actions.append_environment_variable import AppendEnvironmentVariable
 class WorldType:
     RMUC = 'RMUC'
     RMUL = 'RMUL'
-    OSM = 'OSM'
+    LARGE_OSM = 'LARGE_OSM'
 
 def get_world_config(world_type):
     world_configs = {
@@ -36,12 +36,12 @@ def get_world_config(world_type):
             'world_path': 'RMUL2024_world/RMUL2024_world.world'
             # 'world_path': 'RMUL2024_world/RMUL2024_world_dynamic_obstacles.world'
         },
-        WorldType.OSM : {
+        WorldType.LARGE_OSM : {
             'x': '0.0',
             'y': '0.0',
             'z': '0.1',
             'yaw': '0.0',
-            'world_path': 'osm/osm.world'
+            'world_path': 'large_osm/large_osm.world'
         }
     }
     return world_configs.get(world_type, None)
@@ -154,7 +154,7 @@ def generate_launch_description():
 
     bringup_RMUC_cmd_group = create_gazebo_launch_group(WorldType.RMUC)
     bringup_RMUL_cmd_group = create_gazebo_launch_group(WorldType.RMUL)
-    bringup_OSM_cmd_group = create_gazebo_launch_group(WorldType.OSM)
+    bringup_LARGE_OSM_cmd_group = create_gazebo_launch_group(WorldType.LARGE_OSM)
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -171,7 +171,7 @@ def generate_launch_description():
     ld.add_action(start_robot_state_publisher_cmd)
     ld.add_action(bringup_RMUL_cmd_group) # type: ignore
     ld.add_action(bringup_RMUC_cmd_group) # type: ignore
-    ld.add_action(bringup_OSM_cmd_group)
+    ld.add_action(bringup_LARGE_OSM_cmd_group)
 
     # Uncomment this line if you want to start RViz
     ld.add_action(start_rviz_cmd)
