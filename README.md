@@ -2,17 +2,18 @@
 
 ## 一. 项目介绍
 
-本项目实现了基于OpenStreetMap地图（无需提前建图）的具身智能导航系统。
+本项目面向社区、校园等场景，实现了基于OpenStreetMap地图（无需提前建图）的具身智能导航系统。
 
-### 1.1 rm_simulation 话题接口
+### 1.1 关键话题
 
 | **Topic name**      | **Type**                        | **Note**                         |
 |:-------------------:|:-------------------------------:|:--------------------------------:|
-| /camera_sensor/image_raw |      sensor_msgs/msg/Image      |     相机消息类型      |
-|       /livox/lidar       | livox_ros_driver2/msg/CustomMsg | Mid360 自定义消息类型 |
-| /livox/lidar/pointcloud  |   sensor_msgs/msg/PointCloud2   |     点云消息类型      |
-|        /livox/imu        |       sensor_msgs/msg/Imu       |  Gazebo 插件仿真 IMU  |
-| /cmd_vel | geometry_msgs/msg/Twist | 差速小车运动控制接口 |
+| /camera_sensor/image_raw |      sensor_msgs/msg/Image      |     相机话题    |
+|       /livox/lidar       | livox_ros_driver2/msg/CustomMsg | Mid360 自定义话题 |
+| /livox/lidar/pointcloud  |   sensor_msgs/msg/PointCloud2   |     点云话题    |
+|        /livox/imu        |       sensor_msgs/msg/Imu       |  IMU话题  |
+| /cmd_vel | geometry_msgs/msg/Twist | 差速小车运动控制话题 |
+| /odom | nav_msgs/msg/Odometry | 无偏差的里程计话题 |
 
 ### 1.2 架构图
 
@@ -97,7 +98,7 @@
 4. 编译
 
     ```sh
-    colcon build --symlink-install
+    ./build.sh
     ```
 
 ## 三. 运行
@@ -109,7 +110,10 @@
     - 仿真模式
         - `RMUL` - [2024 Robomaster 3V3 场地](https://bbs.robomaster.com/forum.php?mod=viewthread&tid=22942&extra=page%3D1)
         - `RMUC` - [2024 Robomaster 7V7 场地](https://bbs.robomaster.com/forum.php?mod=viewthread&tid=22942&extra=page%3D1)
-
+        - LARGE_OSM
+        - MEDIUM_OSM
+        - SMALL_OSM
+        
     - 真实环境
         - 自定，world 等价于 `.pcd(ICP使用的点云图)` 文件和 `.yaml(Nav使用的栅格地图)` 的名称
 
@@ -169,6 +173,9 @@
     
     # 运行单元号识别节点
     ros2 run llm_exploration_py find_unit_server
+    
+    # 运行机器人位姿发布节点
+    ros2 run llm_delivery robot_pose_pub_node
     
     # 运行配送服务节点
     ros2 run llm_delivery llm_delivery_node
@@ -249,14 +256,7 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:
 
 ## 七. TODO
 
-- [x] 在仿真环境中，将SLAM导航方式调好。
-- [x] 基于LLM，实现基本的自然语言交互导航（导航到几号楼）。
-- [ ] 更加智能的基于自然语言交互的决策模块。
 - [ ] 基于因子图的多模态定位模块。
-- [x] 在楼附近进行探索，找到指定的单元门。
-- [ ] 配送请求生成器
-- [ ] 导航结果评估器
-- [ ] easy and hard world models
 
 ## 致谢
 
