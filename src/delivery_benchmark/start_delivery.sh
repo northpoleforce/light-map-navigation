@@ -83,7 +83,7 @@ do
   ros2 run llm_delivery llm_delivery_node "$line" &
   
   # 等待配送任务完成
-  sleep 600  # 可根据实际任务的耗时调整
+  sleep 1000  # 可根据实际任务的耗时调整
   
   echo "Stopping exploration nodes and simulation environment..."
 

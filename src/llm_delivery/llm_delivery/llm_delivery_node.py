@@ -12,6 +12,7 @@ from custom_interfaces.action import FindUnit
 from custom_interfaces.srv import TaskRecord
 import numpy as np
 import sys
+import time
 
 real_world_flag = False
 
@@ -187,6 +188,8 @@ def main(user_input=None, args=None):
         # Start recording task
         delivery_client.send_task_record_request('start', f'{unit_ids[i]}{building_ids[i]}')
 
+        time.sleep(1)
+
         delivery_client.get_logger().info(f"Delivering to location {i}, please wait patiently!\n")
 
         delivery_client.get_logger().info("#################### Navigation Step ####################")
@@ -246,6 +249,8 @@ def main(user_input=None, args=None):
                 rclpy.spin(delivery_client)
 
                 delivery_client.send_task_record_request('end', f'location_{i}')
+
+                time.sleep(1)
 
             except Exception as e:
                 delivery_client.get_logger().error(f"Error occurred: {e}")

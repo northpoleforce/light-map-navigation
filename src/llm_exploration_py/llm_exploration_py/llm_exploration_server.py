@@ -134,7 +134,7 @@ class LlmExplorationNode(Node):
         try:
             self.waypoint_ = expRoute.execute_exploration(
                 '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/large.osm',
-                self.building_id, 3, 5, self.cur_position
+                self.building_id, 2, 5, self.cur_position
             )
         except Exception as e:
             self.get_logger().error(f"Failed to get waypoints: {str(e)}")

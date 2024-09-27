@@ -17,9 +17,12 @@ def get_route(start, end, plot_route=False):
     """Fetch route from OSRM and convert to waypoints in UTM Zone. Optionally plot the route."""
     
     if real_world_flag is False:
-        osrm_url = "http://waytous.tajiyu.com:5001/route/v1/driving/"
+        # for large
+        osrm_url = "http://101.200.33.217:30447/route/v1/driving/"
+        # for medium
+        # osrm_url = "http://101.200.33.217:30457/route/v1/driving/"
     else:
-        osrm_url = "http://101.200.33.217:5002/route/v1/driving/"
+        osrm_url = "http://101.200.33.217:30437/route/v1/driving/"
     
     # Construct request URL for OSRM
     request_url = f"{osrm_url}{start};{end}"
@@ -149,8 +152,8 @@ def main():
     rclpy.init()
     navigator = BasicNavigator()
 
-    start = "116.41368627548219,39.970421972970726"
-    end = "116.4164078231261,39.97122775625219"
+    start = "10.510999655,0.000264656"
+    end = "10.511513114,-0.000091084"
     waypoints = get_route(start, end, plot_route=True)  # Enable route plotting
 
     print(f"Number of waypoints: {len(waypoints)}")

@@ -47,7 +47,7 @@ def print_ways(osm_file, tags, transformer):
     for idx, (way_name, way_nodes) in enumerate(handler.ways):
         centroid_x, centroid_y = calculate_centroid(way_nodes, handler)
         lon, lat = inverse_transformer.transform(centroid_x, centroid_y)
-        print(f"{way_name}: ({lon:.9f},{lat:.9f})")
+        print(f"\"{way_name}\": ({lon:.9f},{lat:.9f}),")
 
 if __name__ == "__main__":
     osm_file = sys.argv[1]  # Input OSM file

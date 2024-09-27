@@ -105,7 +105,7 @@ def print_building_assignments(building_assignments, handler):
     print("\nUTM Coordinates:")
     for building, models in sorted_buildings:
         model_positions = [f"({pos[0]:.2f}, {pos[1]:.2f})" for _, pos in models]
-        print(f'"{building}_coords": {model_positions},')
+        print(f'"{building}": {model_positions},')
 
     print("\nWGS84 Coordinates:")
     for building, models in sorted_buildings:

@@ -1,3 +1,4 @@
+# for large
 building_coordinates = {
     "building1": (10.511010327, 0.000235218),
     "building2": (10.511016244, 0.000086922),
@@ -17,6 +18,31 @@ building_coordinates = {
     "building16": (10.512097940, 0.000131020),
     "building17": (10.512033585, -0.000183692),
 }
+
+# for medium
+# building_coordinates = {
+#     "building9": (10.511525952,0.000155743),
+#     "building14": (10.511510469,-0.000122469),
+#     "building10": (10.511261754,-0.000128177),
+#     "building13": (10.511498792,-0.000250123),
+#     "building12": (10.511378979,-0.000254821),
+#     "building11": (10.511254938,-0.000246708),
+#     "building6": (10.510983140,-0.000294500),
+#     "building5": (10.511021620,-0.000178560),
+#     "building4": (10.510952120,-0.000173300),
+#     "building3": (10.510962240,-0.000078780),
+#     "building8": (10.511311600,0.000089700),
+#     "building2": (10.511018633,0.000083522),
+#     "building1": (10.511013469,0.000240154),
+#     "building7": (10.511274600,0.000253038),
+# }
+
+# for small
+# building_coordinates = {
+#     "building3": (10.511252946,-0.000072915),
+#     "building2": (10.511289862,0.000049554),
+#     "building1": (10.511206560,0.000058620),
+# }
 
 # for real-world
 # building_coordinates = {
@@ -87,7 +113,7 @@ output_format =  """
             "building_coordinates": [10.511262554, 0.000258062],
             "unit_ids": ["unit1"],
             "specific_unit_coordinates_at_this_building": ["unknown"],
-            "unit_coordinates": [9.50, 25.45]
+            "unit_coordinates": []
         },
         {
             "item": "待配送物品",
@@ -95,7 +121,7 @@ output_format =  """
             "building_coordinates": [10.511262554, 0.000258062],
             "unit_ids": ["unit2"],
             "specific_unit_coordinates_at_this_building": ["unknown"],
-            "unit_coordinates": [-2.59, -27.03]
+            "unit_coordinates": []
         }
     ]
 }
