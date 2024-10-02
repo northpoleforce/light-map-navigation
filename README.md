@@ -37,6 +37,9 @@
     ```bash
     # docker 一键安装
     wget http://fishros.com/install -O fishros && . fishros
+
+    # 安装 nvidia-docker
+    sudo apt install nvidia-docker2
     
     # nvidia-container-toolkit 安装
     https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
@@ -68,6 +71,10 @@
 
     ```sh
     git clone https://github.com/EI-Nav/light-map-navigation.git --depth=1
+    git submodule init
+    git submodule update
+
+    cd src/rm_localization/FAST_LIO/
     git submodule init
     git submodule update
     ```
@@ -110,9 +117,9 @@
     - 仿真模式
         - `RMUL` - [2024 Robomaster 3V3 场地](https://bbs.robomaster.com/forum.php?mod=viewthread&tid=22942&extra=page%3D1)
         - `RMUC` - [2024 Robomaster 7V7 场地](https://bbs.robomaster.com/forum.php?mod=viewthread&tid=22942&extra=page%3D1)
-        - LARGE_OSM
-        - MEDIUM_OSM
-        - SMALL_OSM
+        - `LARGE_OSM`
+        - `MEDIUM_OSM`
+        - `SMALL_OSM`
         
     - 真实环境
         - 自定，world 等价于 `.pcd(ICP使用的点云图)` 文件和 `.yaml(Nav使用的栅格地图)` 的名称
@@ -160,12 +167,12 @@
     ```sh
     # 运行机器人导航系统及仿真环境
     ros2 launch rm_nav_bringup bringup_sim.launch.py \
-    world:=OSM \
+    world:=LARGE_OSM \
     mode:=nav \
     lio:=fastlio \
     localization:=icp \
     lio_rviz:=False \
-    nav_rviz:=True
+    nav_rviz:=True \
     use_sim_time:=True
     
     # 运行探索节点
