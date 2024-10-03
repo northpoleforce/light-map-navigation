@@ -41,7 +41,7 @@ do
   echo "Starting navigation and simulation environment..."
   
   # 启动机器人导航系统及仿真环境
-  ros2 launch rm_nav_bringup bringup_sim.launch.py \
+  ros2 launch classic_nav_bringup bringup_sim.launch.py \
     world:=LARGE_OSM \
     mode:=nav \
     lio:=fastlio \

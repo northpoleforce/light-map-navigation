@@ -74,7 +74,7 @@
     git submodule init
     git submodule update
 
-    cd src/rm_localization/FAST_LIO/
+    cd src/classic_localization/FAST_LIO/
     git submodule init
     git submodule update
     ```
@@ -135,7 +135,7 @@
 4. `localization` (仅 `mode:=nav` 时本参数有效)
    - `slam_toolbox` - 使用 [slam_toolbox](https://github.com/SteveMacenski/slam_toolbox) localization 模式定位，动态场景中效果更好
    - `amcl` - 使用 [AMCL](https://navigation.ros.org/configuration/packages/configuring-amcl.html) 经典算法定位
-   - `icp` - 使用 [icp_registration](https://github.com/baiyeweiguang/CSU-RM-Sentry/tree/main/src/rm_localization/icp_registration)，仅在第一次启动或者手动设置 /initialpose 时进行点云配准。获得初始位姿后只依赖 LIO 进行定位，没有回环检测，在长时间运行后可能会出现累积误差。
+   - `icp` - 使用 [icp_registration](https://github.com/baiyeweiguang/CSU-RM-Sentry/tree/main/src/classic_localization/icp_registration)，仅在第一次启动或者手动设置 /initialpose 时进行点云配准。获得初始位姿后只依赖 LIO 进行定位，没有回环检测，在长时间运行后可能会出现累积误差。
 
     Tips:
     1. 若使用 AMCL 算法定位时，启动后需要在 rviz2 中手动给定初始位姿。
