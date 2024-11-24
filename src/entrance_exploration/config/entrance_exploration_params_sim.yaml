@@ -1,0 +1,8 @@
+/entrance_exploration:
+  ros__parameters:
+    osm_file_path: '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/small.osm'
+    exploration_radius: 2.0
+    exploration_points: 5
+    camera_topic: '/camera_sensor/image_raw'
+    map_frame: 'map'
+    odom_frame: 'lidar_odom' 
