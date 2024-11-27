@@ -1,6 +1,6 @@
 /entrance_exploration:
   ros__parameters:
-    osm_file_path: '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/small.osm'
+    osm_file_path: '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/medium.osm'
     exploration_radius: 2.0
     exploration_points: 5
     camera_topic: '/camera_sensor/image_raw'

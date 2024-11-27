@@ -12,12 +12,17 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(custom_interfaces
     "msg/Path.msg"
+    "msg/TaskDescription.msg"
+    "msg/DeliveryFeedback.msg"
+    "msg/DeliveryResult.msg"
+    "srv/GetTaskSequence.srv"
     "srv/GetWaypoints.srv"
     "srv/GetUnitNum.srv"
     "srv/GetEntranceId.srv"
     "srv/TaskRecord.srv"
     "action/FindUnit.action"
     "action/EntranceExploration.action"
+    "action/DeliveryTask.action"
     DEPENDENCIES geometry_msgs sensor_msgs
     )
 

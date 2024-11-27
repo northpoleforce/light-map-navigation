@@ -32,7 +32,7 @@ class EntranceExplorationActionServer(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('osm_file_path', '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/small.osm'),
+                ('osm_file_path', '/workspaces/light-map-navigation/src/llm_exploration_py/OSM/medium.osm'),
                 ('exploration_radius', 2.0),
                 ('exploration_points', 5),
                 ('camera_topic', '/camera_sensor/image_raw'),
@@ -80,7 +80,7 @@ class EntranceExplorationActionServer(Node):
     def _init_perception(self):
         """Initialize perception-related components"""
         # Service client
-        self.get_entrance_id_client = self.create_client(GetEntranceId, 'recognize_entrance')
+        self.get_entrance_id_client = self.create_client(GetEntranceId, 'entrance_recognition')
         self._wait_for_service()
         
         # Image subscriber
@@ -111,7 +111,7 @@ class EntranceExplorationActionServer(Node):
     def _wait_for_service(self):
         """Wait for required services to become available"""
         while not self.get_entrance_id_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for recognize_entrance service...')
+            self.get_logger().info('Waiting for entrance_recognition service...')
 
     def image_callback(self, msg):
         """Callback function for receiving image data"""
@@ -416,7 +416,7 @@ class EntranceExplorationActionServer(Node):
                 feedback_msg.status = detected_msg
                 goal_handle.publish_feedback(feedback_msg)
 
-                if response.entrance_id == self.target_unit_id:
+                if f"unit{response.entrance_id}" == self.target_unit_id:
                     feedback_msg.status = "Target entrance found!"
                     goal_handle.publish_feedback(feedback_msg)
                     return True

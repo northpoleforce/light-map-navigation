@@ -24,7 +24,7 @@ class EntranceRecognitionClient(Node):
 
     def _init_client(self):
         """Initialize service client and wait for service availability"""
-        self.client = self.create_client(GetEntranceId, 'recognize_entrance')
+        self.client = self.create_client(GetEntranceId, 'entrance_recognition')
         self._wait_for_service()
 
     def _wait_for_service(self):

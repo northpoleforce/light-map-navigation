@@ -1,8 +1,6 @@
 from setuptools import find_packages, setup
-from glob import glob
-import os
 
-package_name = 'entrance_exploration'
+package_name = 'task_planning'
 
 setup(
     name=package_name,
@@ -12,20 +10,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='WJH',
     maintainer_email='wjh_9696@163.com',
-    description='Entrance exploration for the robot',
+    description='Task Planning Service',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'entrance_exploration_action_server = entrance_exploration.entrance_exploration_action_server:main',
-            'entrance_exploration_action_client = entrance_exploration.entrance_exploration_action_client:main',
+            'task_planning_server = task_planning.task_planning_server:main',
+            'task_planning_client = task_planning.task_planning_client:main',
         ],
     },
 )

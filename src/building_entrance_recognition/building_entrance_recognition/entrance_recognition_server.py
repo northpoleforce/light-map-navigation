@@ -23,8 +23,8 @@ For example:
 Note: It is necessary to output the result in JSON format and nothing else."""
 
     def __init__(self):
-        super().__init__('entrance_recognition_service')
-        self.srv = self.create_service(GetEntranceId, 'recognize_entrance', self.recognize_entrance_callback)
+        super().__init__('entrance_recognition_server')
+        self.srv = self.create_service(GetEntranceId, 'entrance_recognition', self.recognize_entrance_callback)
         self.bridge = CvBridge()
         self._init_api_client()
 
