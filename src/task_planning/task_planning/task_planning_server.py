@@ -5,6 +5,7 @@ from custom_interfaces.msg import TaskDescription
 from utils_pkg import APIClient
 import json
 import re
+from utils_pkg import OSMHandler
 
 class TaskPlanningService(Node):
     """
@@ -13,7 +14,11 @@ class TaskPlanningService(Node):
     """
     
     def __init__(self):
-        super().__init__('task_planning_service')
+        super().__init__('task_planning_server')
+        
+        # Declare and get map file path parameter
+        self.declare_parameter('osm_file_path', 'path/to/your/map.osm')
+        self.osm_file_path = self.get_parameter('osm_file_path').value
         
         # Initialize coordinate data
         self._init_coordinate_data()
@@ -32,43 +37,24 @@ class TaskPlanningService(Node):
 
     def _init_coordinate_data(self):
         """Initialize building and unit coordinate data"""
-        self.building_coordinates = {
-            "building1": (10.511010327, 0.000235218),
-            "building2": (10.511016244, 0.000086922),
-            "building3": (10.510963920, -0.000079640),
-            "building4": (10.510953840, -0.000173880),
-            "building5": (10.511022280, -0.000178800),
-            "building6": (10.510985680, -0.000295100),
-            "building7": (10.511262554, 0.000258062),
-            "building8": (10.511312240, 0.000089240),
-            "building9": (10.511525424, 0.000177076),
-            "building10": (10.511256380, -0.000125360),
-            "building11": (10.511509522, -0.000094233),
-            "building12": (10.511246718, -0.000243509),
-            "building13": (10.511806045, 0.000213527),
-            "building14": (10.512026964, 0.000253336),
-            "building15": (10.511943636, 0.000122945),
-            "building16": (10.512097940, 0.000131020),
-            "building17": (10.512033585, -0.000183692),
-        }
+        osm_handler = OSMHandler()
+        osm_handler.apply_file(self.osm_file_path)
         
-        self.units_coordinates = {
-            "building1": {
-                "unit1": (),
-                "unit2": (),
-                "unit3": (),
-                "unit4": (),
-                "unit5": (),
-            },
-            "building2": {
-                "unit1": (),
-                "unit2": (),
-            },
-            "building3": {
-                "unit1": (),
-                "unit2": (),
-            },
-        }
+        self.building_coordinates = osm_handler.get_all_ways_center_by_type('building')
+        
+        # TODO: Determine how to get coordinates for all units (entrances)
+        all_units = osm_handler.get_all_nodes_by_type('entrance')
+        
+        self.units_coordinates = {}
+        
+        for building_id in self.building_coordinates.keys():
+            self.units_coordinates[building_id] = {}
+            building_units = {
+                f"unit{i+1}": coords 
+                for i, (name, coords) in enumerate(all_units.items())
+                if name.startswith(building_id)
+            }
+            self.units_coordinates[building_id] = building_units
 
     def _init_llm_client(self):
         """Initialize LLM API client"""

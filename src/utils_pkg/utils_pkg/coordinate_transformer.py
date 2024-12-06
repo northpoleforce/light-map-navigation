@@ -1,6 +1,6 @@
 import math
 from typing import Tuple
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 
 class CoordinateTransformer:
     """Utility class for coordinate transformation between WGS84 and UTM coordinate systems"""
@@ -33,9 +33,10 @@ class CoordinateTransformer:
         Returns:
             Tuple[float, float, int]: (easting, northing, EPSG code) where coordinates are in meters
         """
-        epsg = CoordinateTransformer.get_utm_epsg(lat, lon)
-        epsg = 32633 # TODO: remove hardcode
-        transformer = Transformer.from_proj('EPSG:4326', f'EPSG:{epsg}')
+        epsg = CoordinateTransformer.get_utm_epsg(lon, lat)
+        crs_wgs84 = CRS.from_epsg(4326)
+        crs_utm = CRS.from_epsg(epsg)
+        transformer = Transformer.from_crs(crs_wgs84, crs_utm)
         easting, northing = transformer.transform(lat, lon)
         return (easting, northing, epsg)
 
@@ -52,6 +53,8 @@ class CoordinateTransformer:
         Returns:
             Tuple[float, float]: (longitude, latitude) in degrees
         """
-        transformer = Transformer.from_proj(f'EPSG:{epsg}', 'EPSG:4326')
+        crs_utm = CRS.from_epsg(epsg)
+        crs_wgs84 = CRS.from_epsg(4326)
+        transformer = Transformer.from_crs(crs_utm, crs_wgs84)
         lat, lon = transformer.transform(easting, northing)
         return (lon, lat)

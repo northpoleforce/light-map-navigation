@@ -1,0 +1,4 @@
+osmium
+openai
+pyclipper
+httpx[socks]

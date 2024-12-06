@@ -13,7 +13,7 @@ from launch.conditions import LaunchConfigurationEquals, LaunchConfigurationNotE
 def generate_launch_description():
     # Get the launch directory
     classic_nav_bringup_dir = get_package_share_directory('classic_nav_bringup')
-    pb_gazebo_simulation_launch_dir = os.path.join(get_package_share_directory('classic_simulation'), 'launch')
+    pb_gazebo_simulation_launch_dir = os.path.join(get_package_share_directory('gazebo_simulation'), 'launch')
     navigation2_launch_dir = os.path.join(get_package_share_directory('classic_navigation'), 'launch')
 
     # Create the launch configuration variables

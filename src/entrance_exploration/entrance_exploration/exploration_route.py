@@ -118,7 +118,7 @@ def execute_exploration(osm_file, target_name, offset_distance, additional_dista
     if real_world_flag is True:
         utm = CRS.from_epsg(32650) # 50n
     else:
-        utm = CRS.from_epsg(32633)  # 33n
+        utm = CRS.from_epsg(32650)  # 50n
     wgs84 = CRS.from_epsg(4326)
     transformer = Transformer.from_crs(wgs84, utm, always_xy=True)
 

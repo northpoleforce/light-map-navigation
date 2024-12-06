@@ -8,20 +8,15 @@ import signal
 import sys
 
 class DeliveryExecutorActionClient(Node):
-    """
-    Action client node for initiating and monitoring delivery tasks.
-    Provides functionality to send delivery requests and handle responses.
-    """
+    """Action client node for initiating and monitoring delivery tasks."""
 
     def __init__(self):
         super().__init__('delivery_executor_action_client')
         self._is_finished = False
         self._goal_handle = None
         
-        # Use ReentrantCallbackGroup to allow concurrent execution
         callback_group = ReentrantCallbackGroup()
         
-        # Initialize action client
         self._action_client = ActionClient(
             self,
             DeliveryTask,
@@ -29,7 +24,6 @@ class DeliveryExecutorActionClient(Node):
             callback_group=callback_group
         )
         
-        # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
         
@@ -38,13 +32,10 @@ class DeliveryExecutorActionClient(Node):
         self._get_result_future = None
 
     def _signal_handler(self, signum, frame):
-        """Handle shutdown signals"""
         self.get_logger().info('Received shutdown signal, canceling task...')
-        # Ensure exit even in timeout cases
         try:
             if self._goal_handle is not None:
                 cancel_future = self._goal_handle.cancel_goal_async()
-                # Reduce timeout duration and add forced exit after timeout
                 if not rclpy.spin_until_future_complete(self, cancel_future, timeout_sec=1.0):
                     self.get_logger().warn('Cancel goal timed out, forcing exit...')
             
@@ -53,7 +44,6 @@ class DeliveryExecutorActionClient(Node):
         except Exception as e:
             self.get_logger().error(f'Error during shutdown: {str(e)}')
         finally:
-            # Ensure program always exits
             sys.exit(1)
 
     def cancel_goal(self):
@@ -81,22 +71,18 @@ class DeliveryExecutorActionClient(Node):
         """
         self.get_logger().info('Waiting for Action Server...')
         
-        # Wait for server with timeout retry mechanism
         while not self._action_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().info('Action Server not available, waiting...')
         
-        # Validate user input
         if not user_input or not isinstance(user_input, str):
             self.get_logger().error('Invalid user input')
             return False
         
-        # Create and send goal message
         goal_msg = DeliveryTask.Goal()
         goal_msg.user_input = user_input
         
         self.get_logger().info(f'Sending delivery task goal: {user_input}')
         
-        # Send goal with feedback callback
         self._send_goal_future = self._action_client.send_goal_async(
             goal_msg,
             feedback_callback=self.feedback_callback
@@ -120,9 +106,8 @@ class DeliveryExecutorActionClient(Node):
                 return
             
             self.get_logger().info('Task accepted')
-            self._goal_handle = goal_handle  # Store goal_handle for cancellation
+            self._goal_handle = goal_handle
             
-            # Request the result
             self._get_result_future = goal_handle.get_result_async()
             self._get_result_future.add_done_callback(self.get_result_callback)
             
@@ -141,7 +126,6 @@ class DeliveryExecutorActionClient(Node):
         result = future.result().result
         result_message = result.result.message
         
-        # Handle different status outcomes
         if status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info(f'Task completed successfully: {result_message}')
         elif status == GoalStatus.STATUS_CANCELED:
@@ -150,10 +134,9 @@ class DeliveryExecutorActionClient(Node):
             self.get_logger().info(f'Task failed: {result_message}')
         
         self.get_logger().info('Task processing complete, preparing to exit...')
-        self._goal_handle = None  # Clear goal handle
+        self._goal_handle = None
         self._is_finished = True
         
-        # Shutdown the node
         self.destroy_node()
         rclpy.shutdown()
 
@@ -165,7 +148,7 @@ class DeliveryExecutorActionClient(Node):
             feedback_msg: Contains the DeliveryFeedback message with progress information
         """
         status = feedback_msg.feedback.feedback.status
-        self.get_logger().info(f'Received feedback: {status}')
+        self.get_logger().info(f'Received feedback:\n{status}')
 
     def destroy_node(self):
         """
@@ -178,14 +161,11 @@ class DeliveryExecutorActionClient(Node):
 def main():
     """Main function to run the action client."""
     try:
-        # Initialize ROS client
         rclpy.init()
         
-        # Create and run action client
         action_client = DeliveryExecutorActionClient()
-        action_client.send_goal("Please deliver this apple to unit 2 of building 1")
+        action_client.send_goal("Please deliver this apple to unit 1 of building 1")
         
-        # Spin until shutdown
         rclpy.spin(action_client)
         
     except KeyboardInterrupt:
@@ -193,10 +173,8 @@ def main():
     except Exception as e:
         print(f"Error occurred: {str(e)}")
     finally:
-        # Cleanup
         if rclpy.ok():
             try:
-                # Ensure the goal is canceled before exiting
                 if hasattr(action_client, '_goal_handle') and action_client._goal_handle is not None:
                     action_client.cancel_goal()
                 action_client.destroy_node()

@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+from glob import glob
 
 package_name = 'utils_pkg'
 
@@ -10,6 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/resource/osm', glob('resource/osm/*')),
     ],
     install_requires=['setuptools',
                       'requests',
@@ -25,6 +27,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'osm2pgm = utils_pkg.osm2pgm:main',
+            'transform_pgm = utils_pkg.transform_pgm:main',
+            'osm_postprocessing = utils_pkg.osm_postprocessing:main',
         ],
     },
 )
