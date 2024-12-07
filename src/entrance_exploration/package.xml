@@ -16,6 +16,7 @@
   <depend>nav2_simple_commander</depend>
   <depend>tf2_ros</depend>
   <depend>building_entrance_recognition</depend>
+  <depend>utils_pkg</depend>
 
   <!-- Build tool dependencies -->
   <buildtool_depend>ament_python</buildtool_depend>

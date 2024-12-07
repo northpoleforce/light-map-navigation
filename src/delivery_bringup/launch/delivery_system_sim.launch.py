@@ -5,18 +5,11 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    entrance_exploration_pkg_dir = get_package_share_directory('entrance_exploration')
-    entrance_exploration_config_file = os.path.join(
-        entrance_exploration_pkg_dir,
+    delivery_bringup_pkg_dir = get_package_share_directory('delivery_bringup')
+    delivery_bringup_config_file = os.path.join(
+        delivery_bringup_pkg_dir,
         'config',
-        'entrance_exploration_params_sim.yaml'
-    )
-    
-    delivery_executor_pkg_dir = get_package_share_directory('delivery_executor')
-    delivery_executor_config_file = os.path.join(
-        delivery_executor_pkg_dir,
-        'config',
-        'delivery_executor_sim.yaml'
+        'delivery_bringup_sim.yaml'
     )
     
     osm_dir = get_package_share_directory('utils_pkg')
@@ -50,7 +43,7 @@ def generate_launch_description():
         package='entrance_exploration',
         executable='entrance_exploration_action_server',
         parameters=[
-            entrance_exploration_config_file,
+            delivery_bringup_config_file,
             {'osm_file_path': osm_file_path}
         ],
         output='screen',
@@ -63,7 +56,7 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[
-            delivery_executor_config_file,
+            delivery_bringup_config_file,
             {'osm_file_path': osm_file_path}
         ]
     )

@@ -5,6 +5,7 @@ from rclpy.action import (
     ActionClient,
     CancelResponse
 )
+from action_msgs.msg import GoalStatus
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
@@ -38,6 +39,7 @@ import math
 import sys
 import time
 import numpy as np
+import asyncio
 
 
 class DeliveryExecutorActionServer(Node):
@@ -59,19 +61,20 @@ class DeliveryExecutorActionServer(Node):
 
     def _declare_parameters(self):
         """Declare all required ROS parameters"""
-        self.declare_parameter('osm_file_path', 'medium.osm')
-        self.declare_parameter('osm_routing_url', 'http://101.200.33.217:30457/route/v1/driving/')
-        self.declare_parameter('transform_matrix', [
-            1.0, 0.0, 500000.0,
-            0.0, 1.0, 4483000.0,
-            0.0, 0.0, 1.0
-        ])
-        self.declare_parameter('service_wait_time', 1.0)
-        self.declare_parameter('max_service_wait_time', 10.0)
-        self.declare_parameter('exploration_wait_time', 1.0)
-        self.declare_parameter('max_exploration_wait_time', 30.0)
-        self.declare_parameter('navigation_check_interval', 2.0)
-        self.declare_parameter('executor_threads', 4)
+        params = {
+            'osm_file_path': 'medium.osm',
+            'osm_routing_url': 'http://101.200.33.217:30457/route/v1/driving/',
+            'transform_matrix': [1.0, 0.0, 500000.0, 0.0, 1.0, 4483000.0, 0.0, 0.0, 1.0],
+            'service_wait_time': 1.0,
+            'max_service_wait_time': 10.0,
+            'exploration_wait_time': 1.0,
+            'max_exploration_wait_time': 30.0,
+            'navigation_check_interval': 2.0,
+            'executor_threads': 4
+        }
+        
+        for name, default in params.items():
+            self.declare_parameter(name, default)
 
     def _init_components(self):
         callback_group = ReentrantCallbackGroup()
@@ -214,11 +217,7 @@ class DeliveryExecutorActionServer(Node):
                 return False
 
             waypoints = await self._get_navigation_waypoints(robot_position, lon, lat)
-            if not waypoints:
-                self.get_logger().error('Failed to get navigation waypoints')
-                return False
-            
-            return await self._execute_waypoint_navigation(waypoints, robot_position, goal_handle, feedback, feedback_msg)
+            return await self._execute_waypoint_navigation(waypoints, robot_position, goal_handle, feedback, feedback_msg) if waypoints else False
 
         except Exception as e:
             self.get_logger().error(f'Navigation failed: {str(e)}')
@@ -244,7 +243,7 @@ class DeliveryExecutorActionServer(Node):
     async def _get_navigation_waypoints(self, robot_position: tuple, target_lon: float, target_lat: float):
         try:
             utm_epsg = CoordinateTransformer.get_utm_epsg(target_lon, target_lat)
-            self.get_logger().info(f'UTM EPSG: {utm_epsg}')
+            self.get_logger().debug(f'UTM EPSG: {utm_epsg}')
             
             transform_matrix = self._get_transform_matrix()
             
@@ -260,13 +259,13 @@ class DeliveryExecutorActionServer(Node):
             start_pos = f"{float(curr_robot_lon):.9f},{float(curr_robot_lat):.9f}"
             target_pos = f"{float(target_lon):.9f},{float(target_lat):.9f}"
             
-            self.get_logger().info(f'Start position: {start_pos}')
-            self.get_logger().info(f'Target position: {target_pos}')
+            self.get_logger().debug(f'Start position: {start_pos}')
+            self.get_logger().debug(f'Target position: {target_pos}')
             
             routing_url = self.get_parameter('osm_routing_url').value
             planner = OsmGlobalPlanner(routing_url)
             waypoints = planner.get_route(start_pos, target_pos)
-            self.get_logger().info(f'Waypoints: {waypoints}')
+            self.get_logger().debug(f'Waypoints: {waypoints}')
             
             if not waypoints:
                 self.get_logger().error('Failed to get navigation waypoints')
@@ -279,51 +278,37 @@ class DeliveryExecutorActionServer(Node):
             return None
 
     async def _execute_waypoint_navigation(self, waypoints, robot_position: tuple, goal_handle, feedback, feedback_msg) -> bool:
-        try:
-            total_waypoints = len(waypoints)
-            for i, waypoint in enumerate(waypoints):
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Navigation cancelled')
-                    return False
+        total_waypoints = len(waypoints)
+        for i, waypoint in enumerate(waypoints):
+            if goal_handle.is_cancel_requested:
+                return False
 
-                self._update_task_progress(
-                    goal_handle,
-                    feedback,
-                    feedback_msg,
-                    f"Navigating to waypoint {i+1}/{total_waypoints}"
-                )
+            self._update_task_progress(
+                goal_handle,
+                feedback,
+                feedback_msg,
+                f"Navigating to waypoint {i+1}/{total_waypoints}"
+            )
+            
+            local_coords = self._transform_coordinates(waypoint)
+            pose = self._create_navigation_pose(
+                local_coords[0],
+                local_coords[1],
+                self._calculate_waypoint_orientation(i, waypoints, *local_coords, robot_position)
+            )
+            
+            if not await self._navigate_to_waypoint(pose, i+1, total_waypoints, goal_handle, feedback, feedback_msg):
+                return False
+                
+        return True
 
-                self.get_logger().info(f'Waypoint {i+1}: {waypoint.lon}, {waypoint.lat}')
-                
-                utm_east, utm_north, _ = CoordinateTransformer.wgs84_to_utm(
-                    waypoint.lon, waypoint.lat)
-                
-                self.get_logger().info(f'UTM East: {utm_east}, UTM North: {utm_north}')
-                
-                transform_matrix = self._get_transform_matrix()
-                transform_matrix_inv = np.linalg.inv(transform_matrix)
-                
-                utm_coords = np.array([[utm_east], [utm_north], [1.0]])
-                
-                local_coords = np.dot(transform_matrix_inv, utm_coords)
-                local_x = float(local_coords[0][0])
-                local_y = float(local_coords[1][0])
-                
-                pose = self._create_navigation_pose(
-                    local_x, local_y,
-                    self._calculate_waypoint_orientation(
-                        i, waypoints, utm_east, utm_north, robot_position
-                    )
-                )
-                
-                if not await self._navigate_to_waypoint(pose, i+1, total_waypoints, goal_handle, feedback, feedback_msg):
-                    return False
-                    
-            return True
-                
-        except Exception as e:
-            self.get_logger().error(f'Waypoint navigation error: {str(e)}')
-            return False
+    def _transform_coordinates(self, waypoint):
+        utm_east, utm_north, _ = CoordinateTransformer.wgs84_to_utm(waypoint.lon, waypoint.lat)
+        transform_matrix = self._get_transform_matrix()
+        transform_matrix_inv = np.linalg.inv(transform_matrix)
+        utm_coords = np.array([[utm_east], [utm_north], [1.0]])
+        local_coords = np.dot(transform_matrix_inv, utm_coords)
+        return float(local_coords[0][0]), float(local_coords[1][0])
 
     def _create_navigation_pose(self, x: float, y: float, quaternion: tuple) -> PoseStamped:
         pose = PoseStamped()
@@ -401,6 +386,7 @@ class DeliveryExecutorActionServer(Node):
             self._active_goal_handle = goal_handle
             self._active_feedback = feedback
             self._active_feedback_msg = feedback_msg
+            self._exploration_goal_handle = None
 
             init_msg = (
                 f"Task Status: Exploration Initializing\n"
@@ -421,12 +407,22 @@ class DeliveryExecutorActionServer(Node):
             )
             self._update_task_progress(goal_handle, feedback, feedback_msg, start_msg)
             
-            goal_future = await self._send_exploration_goal(goal_msg)
+            self._exploration_goal_handle = await self._send_exploration_goal(goal_msg)
 
-            if not goal_future.accepted:
+            if not self._exploration_goal_handle.accepted:
                 raise Exception('Exploration goal rejected')
 
-            result = await goal_future.get_result_async()
+            goal_result_future = self._exploration_goal_handle.get_result_async()
+
+            while not goal_result_future.done():
+                if goal_handle.is_cancel_requested:
+                    self.get_logger().info('Exploration cancelled by client')
+                    self._exploration_goal_handle.cancel_goal()
+                    return False
+                    
+                time.sleep(2)
+
+            result = await goal_result_future
             success = self._handle_exploration_result(result)
             
             status_msg = (
@@ -445,6 +441,7 @@ class DeliveryExecutorActionServer(Node):
             self._active_goal_handle = None
             self._active_feedback = None
             self._active_feedback_msg = None
+            self._exploration_goal_handle = None
 
     async def _wait_for_exploration_server(self) -> bool:
         wait_time = 1.0
@@ -597,6 +594,10 @@ class DeliveryExecutorActionServer(Node):
     def cancel_callback(self, goal_handle):
         if hasattr(self, 'navigator'):
             self.navigator.cancelTask()
+            
+        if hasattr(self, '_exploration_goal_handle') and self._exploration_goal_handle:
+            self.get_logger().info('Cancelling exploration task...')
+            self._exploration_goal_handle.cancel_goal()
         
         return CancelResponse.ACCEPT
 

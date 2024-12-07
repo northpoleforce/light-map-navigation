@@ -1,34 +1,47 @@
+import time
+from math import radians, cos, sin, atan2, sqrt
+
+# Third-party imports
+import numpy as np
+import osmium as osm
+import pyclipper
+
+# ROS imports
 import rclpy
-from rclpy.action import (
-    ActionServer,
-    GoalResponse,
-    CancelResponse
-)
+from rclpy.action import ActionServer, GoalResponse, CancelResponse
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 
 from tf2_ros import Buffer, TransformListener
-from geometry_msgs.msg import (
-    TransformStamped,
-    PoseStamped
-)
+from geometry_msgs.msg import TransformStamped, PoseStamped, Quaternion
 from sensor_msgs.msg import Image
-from nav2_simple_commander.robot_navigator import (
-    BasicNavigator,
-    TaskResult
-)
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
+# Custom imports
 from custom_interfaces.action import EntranceExploration
 from custom_interfaces.srv import GetEntranceId
-import entrance_exploration.exploration_route as expRoute
-
-import time
+from utils_pkg import OSMHandler, CoordinateTransformer
 
 class EntranceExplorationActionServer(Node):
     def __init__(self):
         super().__init__('entrance_exploration_action_server')
         
+        # Load parameters
+        self._load_parameters()
+        
+        # Initialize components
+        self.osm_handler = OSMHandler()
+        self.osm_handler.apply_file(self.osm_file_path)
+        self.callback_group = ReentrantCallbackGroup()
+        
+        # Initialize core components
+        self._init_action_server()
+        self._init_navigation()
+        self._init_perception()
+        self._init_state_variables()
+
+    def _load_parameters(self):
         self.declare_parameters(
             namespace='',
             parameters=[
@@ -37,21 +50,32 @@ class EntranceExplorationActionServer(Node):
                 ('exploration_points', 5),
                 ('camera_topic', '/camera_sensor/image_raw'),
                 ('map_frame', 'map'),
-                ('odom_frame', 'lidar_odom')
+                ('bk_frame', 'base_link'),
+                ('transform_matrix', [
+                    1.0, 0.0, -500000.0,
+                    0.0, 1.0, -4483000.0,
+                    0.0, 0.0, 1.0
+                ]),
+                ('navigation_feedback_interval', 2.0),
+                ('service_timeout', 1.0)
             ]
         )
         
+        # Store parameters as instance variables
         self.osm_file_path = self.get_parameter('osm_file_path').value
         self.exploration_radius = self.get_parameter('exploration_radius').value
         self.exploration_points = self.get_parameter('exploration_points').value
         self.camera_topic = self.get_parameter('camera_topic').value
         self.map_frame = self.get_parameter('map_frame').value
-        self.odom_frame = self.get_parameter('odom_frame').value
+        self.bk_frame = self.get_parameter('bk_frame').value
         
-        # create reentrant callback group
-        self.callback_group = ReentrantCallbackGroup()
-        
-        # Initialize action server with goal and cancel callbacks
+        # Get new parameters
+        transform_matrix_list = self.get_parameter('transform_matrix').value
+        self.transform_matrix = np.array(transform_matrix_list).reshape(3, 3)
+        self.navigation_feedback_interval = self.get_parameter('navigation_feedback_interval').value
+        self.service_timeout = self.get_parameter('service_timeout').value
+
+    def _init_action_server(self):
         self._action_server = ActionServer(
             self,
             EntranceExploration,
@@ -61,16 +85,7 @@ class EntranceExplorationActionServer(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self.callback_group
         )
-        
-        # Initialize navigation components
-        self._init_navigation()
-        
-        # Initialize communication components
-        self._init_perception()
-        
-        # Initialize state variables
-        self._init_state_variables()
-            
+
     def _init_navigation(self):
         """Initialize navigation-related components"""
         self.navigator = BasicNavigator()
@@ -110,7 +125,7 @@ class EntranceExplorationActionServer(Node):
 
     def _wait_for_service(self):
         """Wait for required services to become available"""
-        while not self.get_entrance_id_client.wait_for_service(timeout_sec=1.0):
+        while not self.get_entrance_id_client.wait_for_service(timeout_sec=self.service_timeout):
             self.get_logger().info('Waiting for entrance_recognition service...')
 
     def image_callback(self, msg):
@@ -181,6 +196,93 @@ class EntranceExplorationActionServer(Node):
             self.get_logger().error(f'Error in cancel callback: {str(e)}')
             return CancelResponse.REJECT
 
+    def inflate_building(self, coordinates, offset_distance):
+        """Inflate the building polygon by a given offset distance."""
+        pco = pyclipper.PyclipperOffset()
+        pco.AddPath(coordinates, pyclipper.JT_MITER, pyclipper.ET_CLOSEDPOLYGON)
+        inflated_polygon = pco.Execute(offset_distance)
+        return inflated_polygon[0] if inflated_polygon else coordinates
+
+    def sample_waypoints_evenly(self, coordinates, distance):
+        """Sample waypoints evenly along the given coordinates."""
+        total_length = 0
+        num_points = len(coordinates)
+        for i in range(num_points):
+            start = np.array(coordinates[i])
+            end = np.array(coordinates[(i + 1) % num_points])
+            total_length += np.linalg.norm(end - start)
+
+        sampled_waypoints = []
+        accumulated_distance = 0
+
+        for i in range(num_points):
+            start = np.array(coordinates[i])
+            end = np.array(coordinates[(i + 1) % num_points])
+            segment_length = np.linalg.norm(end - start)
+
+            while accumulated_distance + segment_length >= len(sampled_waypoints) * distance:
+                ratio = (len(sampled_waypoints) * distance - accumulated_distance) / segment_length
+                new_point = start + ratio * (end - start)
+                sampled_waypoints.append(tuple(new_point))
+
+            accumulated_distance += segment_length
+
+        return sampled_waypoints
+
+    def calculate_yaw(self, waypoint, target):
+        """Calculate the yaw angle from a waypoint to a target."""
+        vector_to_target = np.array(target) - np.array(waypoint)
+        yaw = atan2(vector_to_target[1], vector_to_target[0])
+        return yaw
+
+    def calculate_orientations(self, all_waypoints, center):
+        """Calculate orientations for all waypoints relative to a center point."""
+        return [self.calculate_yaw(wp, center) for wp in all_waypoints]
+
+    def get_closest_waypoint_index(self, waypoints, robot_position):
+        """Find the index of the closest waypoint to the robot's current position."""
+        distances = [sqrt((x - robot_position[0])**2 + (y - robot_position[1])**2) for x, y, yaw in waypoints]
+        return distances.index(min(distances))
+
+    def reorder_waypoints(self, waypoints, start_index):
+        """Reorder waypoints starting from a specific index."""
+        return waypoints[start_index:] + waypoints[:start_index]
+
+    def get_exploration_waypoints(self, target_name, offset_distance, additional_distance, robot_position):
+        """Generate exploration waypoints for a target building."""
+        target_ways = [way for way in self.osm_handler.ways_info 
+                      if 'name' in way['tags'] and way['tags']['name'] == target_name]
+        
+        self.get_logger().debug(f"Target ways: {target_ways}")
+        
+        if not target_ways:
+            self.get_logger().error(f"No building named '{target_name}' found.")
+            return []
+            
+        target_way = target_ways[0]
+        coordinates = self.osm_handler.get_way_nodes_locations(target_way['id'])
+
+        if coordinates[0] != coordinates[-1]:
+            coordinates.append(coordinates[0])
+
+        transformer = CoordinateTransformer()
+        utm_coordinates = []
+        for lon, lat in coordinates:
+            easting, northing, epsg = transformer.wgs84_to_utm(lon, lat)
+            utm_coordinates.append((easting, northing))
+        coordinates = [np.dot(self.transform_matrix, np.array([x, y, 1]))[:2] for x, y in utm_coordinates]
+        
+        inflated_building = self.inflate_building(coordinates, offset_distance)
+        
+        evenly_sampled_waypoints = self.sample_waypoints_evenly(inflated_building, additional_distance)
+        
+        center = np.mean(coordinates, axis=0)
+        orientations = self.calculate_orientations(evenly_sampled_waypoints, center)
+        waypoints_with_yaw = [(x, y, yaw) for (x, y), yaw in zip(evenly_sampled_waypoints, orientations)]
+        
+        closest_index = self.get_closest_waypoint_index(waypoints_with_yaw, robot_position)
+        return self.reorder_waypoints(waypoints_with_yaw, closest_index)
+
     async def execute_callback(self, goal_handle):
         """Main execution callback for the action server"""
         self._current_goal_handle = goal_handle
@@ -193,7 +295,7 @@ class EntranceExplorationActionServer(Node):
             try:
                 transform: TransformStamped = await self.tf_buffer.lookup_transform_async(
                     self.map_frame,
-                    self.odom_frame,
+                    self.bk_frame,
                     rclpy.time.Time())
             except Exception as e:
                 self.get_logger().error(f'Transform lookup failed: {str(e)}')
@@ -225,22 +327,21 @@ class EntranceExplorationActionServer(Node):
                     message="building_id and unit_id cannot be empty"
                 )
 
-            try:
-                self.waypoint_ = expRoute.execute_exploration(
-                    self.osm_file_path,
-                    self.target_building_id, 
-                    self.exploration_radius,
-                    self.exploration_points, 
-                    self.cur_position
-                )
-                self.get_logger().info(f"Waypoints: {self.waypoint_}")
-            except Exception as e:
-                self.get_logger().error(f"Failed to get waypoints: {str(e)}")
+            self.waypoint_ = self.get_exploration_waypoints(
+                self.target_building_id,
+                self.exploration_radius,
+                self.exploration_points,
+                self.cur_position
+            )
+            
+            if not self.waypoint_:
                 goal_handle.abort()
                 return EntranceExploration.Result(
                     success=False,
-                    message=f"Failed to get waypoints: {str(e)}"
+                    message="Failed to generate exploration waypoints"
                 )
+
+            self.get_logger().debug(f"Generated waypoints: {self.waypoint_}")
                 
         except Exception as e:
             self.get_logger().error(f'Unexpected error: {str(e)}')
@@ -322,6 +423,15 @@ class EntranceExplorationActionServer(Node):
         
         return await self._wait_for_navigation(goal_handle)
 
+    def euler_to_quaternion(self, yaw):
+        """Convert a yaw angle to a quaternion."""
+        q = Quaternion()
+        q.w = cos(yaw / 2)
+        q.x = 0.0
+        q.y = 0.0
+        q.z = sin(yaw / 2)
+        return q
+
     def _create_pose_goal(self, waypoint):
         """Create a PoseStamped message from waypoint coordinates"""
         goal = PoseStamped()
@@ -330,7 +440,7 @@ class EntranceExplorationActionServer(Node):
         goal.pose.position.x = waypoint[0]
         goal.pose.position.y = waypoint[1]
         goal.pose.position.z = 0.0
-        goal.pose.orientation = expRoute.euler_to_quaternion(waypoint[2])
+        goal.pose.orientation = self.euler_to_quaternion(waypoint[2])
         return goal
 
     async def _wait_for_navigation(self, goal_handle):
@@ -359,7 +469,7 @@ class EntranceExplorationActionServer(Node):
                 
                 self.get_logger().info(feedback_msg.status)
             
-            time.sleep(2)
+            time.sleep(self.navigation_feedback_interval)
 
         # If the task is canceled, return False
         if self._cancel_requested:
