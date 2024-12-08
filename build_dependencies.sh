@@ -42,6 +42,6 @@ install_in_conda "Grounded-SAM-2" "-e src/grounded_sam2/grounded_sam2/Grounded-S
 install_in_conda "grounding_dino" "--no-build-isolation -e src/grounded_sam2/grounded_sam2/Grounded-SAM-2/grounding_dino"
 
 # 文件移动
-log_step "Moving Server File"
-mv src/grounded_sam2/grounded_sam2/grounded_sam2_server.py \
-   src/grounded_sam2/grounded_sam2/Grounded-SAM-2/grounded_sam2_server.py
+#log_step "Moving Server File"
+#mv src/grounded_sam2/grounded_sam2/grounded_sam2_server.py \
+#   src/grounded_sam2/grounded_sam2/Grounded-SAM-2/grounded_sam2_server.py
