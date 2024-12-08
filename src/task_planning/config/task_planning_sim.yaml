@@ -1,0 +1,3 @@
+/task_planning_server:
+  ros__parameters:
+    osm_file_path: "/path/to/your/map.osm"
