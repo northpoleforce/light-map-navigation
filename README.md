@@ -127,6 +127,11 @@ llm_api:
 
 ## Run
 
+```sh
+# Allow the container to access the host's X server
+xhost +
+```
+
 ### Simulation Mode Example
 
 ```sh
@@ -145,6 +150,19 @@ ros2 launch delivery_bringup delivery_system_sim.launch.py
 
 # Run client to send delivery requests
 ros2 run delivery_executor delivery_executor_action_client
+```
+
+### Grounded-SAM-2 Server
+If you want to use Grounded-SAM-2 for open-vocabulary instance segmentation, you can run the following commands:
+```sh
+# Set up your proxy
+export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
+
+# Run Grounded-SAM-2 server
+./start_gsam2_server.sh
+
+# Run Grounded-SAM-2 client --- refer to (src/grounded_sam2/grounded_sam2/grounded_sam2_client.py) for your own usage
+ros2 run grounded_sam2 grounded_sam2_client
 ```
 
 ## Robot Model
