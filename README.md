@@ -158,10 +158,20 @@ If you want to use Grounded-SAM-2 for open-vocabulary instance segmentation, you
 # Set up your proxy
 export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
 
+# Download SAM2 checkpoints
+cd src/grounded_sam2/grounded_sam2/Grounded-SAM-2/checkpoints
+bash download_ckpts.sh
+
+# Download GroundingDINO checkpoints
+cd src/grounded_sam2/grounded_sam2/Grounded-SAM-2/gdino_checkpoints
+bash download_ckpts.sh
+
 # Run Grounded-SAM-2 server
+cd /workspaces/light-map-navigation
 ./start_gsam2_server.sh
 
 # Run Grounded-SAM-2 client --- refer to (src/grounded_sam2/grounded_sam2/grounded_sam2_client.py) for your own usage
+source install/setup.bash
 ros2 run grounded_sam2 grounded_sam2_client
 ```
 
