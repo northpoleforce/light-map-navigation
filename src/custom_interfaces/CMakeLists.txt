@@ -15,6 +15,7 @@ rosidl_generate_interfaces(custom_interfaces
     "msg/TaskDescription.msg"
     "msg/DeliveryFeedback.msg"
     "msg/DeliveryResult.msg"
+    "srv/GetGroundedSamResult.srv"
     "srv/GetTaskSequence.srv"
     "srv/GetWaypoints.srv"
     "srv/GetUnitNum.srv"

@@ -54,16 +54,16 @@ This project includes a basic Dockerfile and can be used with [Dev Container](ht
 
 5. Open this project in VSCode, press `Ctrl+Shift+P`, type and select `Dev Containers: Rebuild and Reopen in Container`.
 
-6. Install dependencies:
+6. Install dependencies and compile:
     ```sh
-    rosdep install -r --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y
+    # Set up your proxy
+    export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
 
-    pip3 install -r requirements.txt
-    ```
+    # Install dependencies
+    ./build_dependencies.sh
 
-7. Compile:
-    ```sh
-    ./build.sh
+    # Compile
+    ./build_project.sh
     ```
 
 ### Source Installation
