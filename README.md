@@ -50,11 +50,21 @@ This project includes a basic Dockerfile and can be used with [Dev Container](ht
     git submodule update
     ```
 
-4. Install the `ms-vscode-remote.remote-containers` extension in VSCode on the host machine.
+4. Download Gazebo models and extract them to the `~/.gazebo/` directory:
+    ```sh
+    # Download from Baidu Cloud Drive
+    Link: https://pan.baidu.com/s/1Mkn4BHXaeWyvjxCMvw-gZQ
+    Password: pp8a
 
-5. Open this project in VSCode, press `Ctrl+Shift+P`, type and select `Dev Containers: Rebuild and Reopen in Container`.
+    # After extraction, place files in
+    ~/.gazebo/
+    ```
 
-6. Install dependencies and compile:
+5. Install the `ms-vscode-remote.remote-containers` extension in VSCode on the host machine.
+
+6. Open this project in VSCode, press `Ctrl+Shift+P`, type and select `Dev Containers: Rebuild and Reopen in Container`.
+
+7. Install dependencies and compile:
     ```sh
     # Set up your proxy
     export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
@@ -152,7 +162,7 @@ ros2 launch delivery_bringup delivery_system_sim.launch.py
 ros2 run delivery_executor delivery_executor_action_client
 ```
 
-### Grounded-SAM-2 Server
+### Grounded-SAM-2 Node
 If you want to use Grounded-SAM-2 for open-vocabulary instance segmentation, you can run the following commands:
 ```sh
 # Set up your proxy
@@ -168,11 +178,7 @@ bash download_ckpts.sh
 
 # Run Grounded-SAM-2 server
 cd /workspaces/light-map-navigation
-./start_gsam2_server.sh
-
-# Run Grounded-SAM-2 client --- refer to (src/grounded_sam2/grounded_sam2/grounded_sam2_client.py) for your own usage
-source install/setup.bash
-ros2 run grounded_sam2 grounded_sam2_client
+ros2 launch grounded_sam2 gsam2_node.launch.py
 ```
 
 ## Robot Model
