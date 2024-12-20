@@ -38,8 +38,8 @@ $CONDA_PATH install -y -c conda-forge -n $CONDA_ENV libstdcxx-ng
 # Python包安装
 log_step "Installing Python Packages"
 install_in_conda "Flask" "flask"
-install_in_conda "Grounded-SAM-2" "-e src/grounded_sam2/grounded_sam2/Grounded-SAM-2"
-install_in_conda "grounding_dino" "--no-build-isolation -e src/grounded_sam2/grounded_sam2/Grounded-SAM-2/grounding_dino"
+install_in_conda "grounded_sam2" "-e src/grounded_sam2/grounded_sam2/grounded_sam2"
+install_in_conda "grounding_dino" "--no-build-isolation -e src/grounded_sam2/grounded_sam2/grounded_sam2/grounding_dino"
 
 # 文件移动
 #log_step "Moving Server File"
