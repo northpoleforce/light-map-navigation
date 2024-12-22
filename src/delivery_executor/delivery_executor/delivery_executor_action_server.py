@@ -39,8 +39,6 @@ import math
 import sys
 import time
 import numpy as np
-import asyncio
-
 
 class DeliveryExecutorActionServer(Node):
     """Action server node for handling delivery tasks."""
@@ -278,8 +276,11 @@ class DeliveryExecutorActionServer(Node):
             return None
 
     async def _execute_waypoint_navigation(self, waypoints, robot_position: tuple, goal_handle, feedback, feedback_msg) -> bool:
-        total_waypoints = len(waypoints)
-        for i, waypoint in enumerate(waypoints):
+        # Interpolate waypoints with 1-meter interval
+        interpolated_waypoints = self._interpolate_waypoints(waypoints, interval=3.0)
+        total_waypoints = len(interpolated_waypoints)
+        
+        for i, waypoint in enumerate(interpolated_waypoints):
             if goal_handle.is_cancel_requested:
                 return False
 
@@ -294,7 +295,7 @@ class DeliveryExecutorActionServer(Node):
             pose = self._create_navigation_pose(
                 local_coords[0],
                 local_coords[1],
-                self._calculate_waypoint_orientation(i, waypoints, *local_coords, robot_position)
+                self._calculate_waypoint_orientation(i, interpolated_waypoints, *local_coords, robot_position)
             )
             
             if not await self._navigate_to_waypoint(pose, i+1, total_waypoints, goal_handle, feedback, feedback_msg):
@@ -638,6 +639,69 @@ class DeliveryExecutorActionServer(Node):
         except Exception as e:
             self.get_logger().error(f'Error calculating orientation: {str(e)}')
             return self._yaw_to_quaternion(0.0)
+
+    def _interpolate_waypoints(self, waypoints, interval=1.0):
+        """
+        Interpolate points between adjacent waypoints
+        Args:
+            waypoints: Original waypoint list
+            interval: Interpolation interval in meters
+        Returns:
+            List of interpolated waypoints
+        """
+        interpolated_waypoints = []
+        
+        for i in range(len(waypoints) - 1):
+            current = waypoints[i]
+            next_point = waypoints[i + 1]
+            
+            # Add current waypoint
+            interpolated_waypoints.append(current)
+            
+            # Get local coordinates for current and next points
+            current_local = self._transform_coordinates(current)
+            next_local = self._transform_coordinates(next_point)
+            
+            # Calculate distance between points
+            dx = next_local[0] - current_local[0]
+            dy = next_local[1] - current_local[1]
+            distance = math.sqrt(dx**2 + dy**2)
+            
+            if distance > interval:
+                # Calculate number of points to insert
+                num_points = int(distance / interval)
+                
+                # Calculate step size for each dimension
+                step_x = dx / (num_points + 1)
+                step_y = dy / (num_points + 1)
+                
+                # Insert new waypoints
+                for j in range(num_points):
+                    # Calculate interpolated point in local coordinates
+                    interp_x = current_local[0] + step_x * (j + 1)
+                    interp_y = current_local[1] + step_y * (j + 1)
+                    
+                    # Transform to global coordinates
+                    transform_matrix = self._get_transform_matrix()
+                    utm_coords = np.dot(transform_matrix, 
+                                      np.array([[interp_x], [interp_y], [1.0]]))
+                    
+                    # Convert to WGS84 coordinates
+                    lon, lat = CoordinateTransformer.utm_to_wgs84(
+                        float(utm_coords[0][0]),
+                        float(utm_coords[1][0]),
+                        CoordinateTransformer.get_utm_epsg(current.lon, current.lat)
+                    )
+                    
+                    # Create new waypoint object with required arguments
+                    new_waypoint = type(current)(lon=lon, lat=lat)  # Pass lon and lat as keyword arguments
+                    
+                    interpolated_waypoints.append(new_waypoint)
+        
+        # Add final waypoint
+        interpolated_waypoints.append(waypoints[-1])
+        
+        return interpolated_waypoints
 
 def main(args=None):
     rclpy.init(args=args)

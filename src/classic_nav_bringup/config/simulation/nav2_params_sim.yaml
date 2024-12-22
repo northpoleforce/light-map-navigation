@@ -321,7 +321,7 @@ global_costmap:
         enabled:                  true
         voxel_decay:              0.5                               # 如果是线性衰减，单位为秒；如果是指数衰减，则为 e 的 n 次方
         decay_model:              0                                 # 衰减模型，0=线性，1=指数，-1=持久
-        voxel_size:               0.1                              # 每个体素的尺寸，单位为米
+        voxel_size:               0.2                              # 每个体素的尺寸，单位为米
         track_unknown_space:      true                              # default space is unknown
         mark_threshold:           0                                 # voxel height
         update_footprint_enabled: true

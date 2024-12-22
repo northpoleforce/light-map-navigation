@@ -45,17 +45,35 @@ class IPMImageNode(Node):
                 ('use_distortion', False),
                 ('plane_coefficients', [0.0, 0.0, 1.0, 0.230]),
                 ('border_size', 5),
-                ('kernel_size', 3)
+                ('kernel_size', 3),
+                ('camera_info_topic', '/camera_sensor/camera_info'),
+                ('point_cloud_topic', 'ipm_projected_point_cloud'),
+                ('image_input_topic', '/grounded_sam2/mask'),
+                ('cache_time', 30.0)
             ]
         )
 
-        self.tf_buffer = tf2.Buffer(cache_time=Duration(seconds=30.0))
+        self.tf_buffer = tf2.Buffer(cache_time=Duration(seconds=self.get_parameter('cache_time').value))
         self.tf_listener = tf2.TransformListener(self.tf_buffer, self)
         self.ipm = IPM(self.tf_buffer, distortion=self.get_parameter('use_distortion').value)
         
-        self.result_publisher = self.create_publisher(PointCloud2, 'ipm_projected_point_cloud', 1)
-        self.create_subscription(CameraInfo, '/camera_sensor/camera_info', self.ipm.set_camera_info, 1)
-        self.create_subscription(Image, 'input', self.map_message, 1)
+        self.result_publisher = self.create_publisher(
+            PointCloud2, 
+            self.get_parameter('point_cloud_topic').value, 
+            1
+        )
+        self.create_subscription(
+            CameraInfo, 
+            self.get_parameter('camera_info_topic').value,
+            self.ipm.set_camera_info, 
+            1
+        )
+        self.create_subscription(
+            Image, 
+            self.get_parameter('image_input_topic').value,
+            self.map_message, 
+            1
+        )
 
     def _detect_edges(self, image: np.ndarray) -> np.ndarray:
         kernel_size = self.get_parameter('kernel_size').value

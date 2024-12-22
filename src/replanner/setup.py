@@ -1,6 +1,8 @@
 from setuptools import find_packages, setup
+import os
+from glob import glob
 
-package_name = 'llm_exploration_py'
+package_name = 'replanner'
 
 setup(
     name=package_name,
@@ -10,20 +12,20 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
+    maintainer='WJH',
     maintainer_email='wjh_9696@163.com',
-    description='TODO: Package description',
+    description='Replanner',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'find_unit_client = llm_exploration_py.llm_exploration_client:main',
-            'find_unit_server = llm_exploration_py.llm_exploration_server:main',
-            'get_unit_num_client = llm_exploration_py.get_unit_num_service_client:main',
-            'get_unit_num_service = llm_exploration_py.get_unit_num_service_server:main'
+            'waypoint_replanner_server = replanner.waypoint_replanner_server:main',
+            'waypoint_replanner_client = replanner.waypoint_replanner_client:main',
         ],
     },
 )
