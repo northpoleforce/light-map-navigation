@@ -38,6 +38,17 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True
     )
+
+    local_replanner_node = Node(
+        package='replanner',
+        executable='waypoint_replanner_server',
+        parameters=[
+            delivery_bringup_config_file
+        ],
+        name='waypoint_replanner_server',
+        output='screen',
+        emulate_tty=True
+    )
     
     exploration_node = Node(
         package='entrance_exploration',
@@ -64,6 +75,7 @@ def generate_launch_description():
     return LaunchDescription([
         task_planning_server_node,
         recognition_node,
+        local_replanner_node,
         exploration_node,
         TimerAction(
             period=2.0,

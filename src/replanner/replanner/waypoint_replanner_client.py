@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import rclpy
 from rclpy.node import Node
 from custom_interfaces.srv import TriggerReplan
@@ -19,8 +17,9 @@ class WaypointReplannerClient(Node):
             
         self.get_logger().info('Service connected')
         
-        # Create timer for periodic requests
-        self.timer = self.create_timer(5.0, self.timer_callback)  # Send request every 5 seconds
+        test_waypoints = self.generate_test_waypoints()
+        future = self.send_replan_request(test_waypoints)
+        future.add_done_callback(self.replan_response_callback)
         
     def send_replan_request(self, waypoints):
         """Send replanning request"""
@@ -28,22 +27,13 @@ class WaypointReplannerClient(Node):
         request.waypoints = waypoints
         return self.client.call_async(request)
         
-    def timer_callback(self):
-        """Timer callback function for periodic replanning requests"""
-        # Generate test waypoints
-        test_waypoints = self.generate_test_waypoints()
-        
-        # Send request and add callback
-        future = self.send_replan_request(test_waypoints)
-        future.add_done_callback(self.replan_response_callback)
-        
     def replan_response_callback(self, future):
         """Handle replanning response"""
         try:
             response = future.result()
             if response.success:
                 self.get_logger().info('Replanning successful')
-                # Print new waypoints
+                # Update print statement to match Pose type
                 for i, pose in enumerate(response.new_waypoints.poses):
                     self.get_logger().info(
                         f'Waypoint {i}: x={pose.position.x:.2f}, y={pose.position.y:.2f}'

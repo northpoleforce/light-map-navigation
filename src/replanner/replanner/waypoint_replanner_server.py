@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped, PoseArray
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from tf2_ros import TransformListener, Buffer
 import numpy as np
 import math
@@ -39,9 +39,6 @@ class WaypointReplanner(Node):
         self.replan_pending = False
         self.is_replanning = False
         
-        # Setup update timer
-        self.update_timer = self.create_timer(1.0 / self.update_rate, self.update_callback)
-        
         self.get_logger().info('Replanning service started')
 
     def _declare_parameters(self):
@@ -49,7 +46,6 @@ class WaypointReplanner(Node):
         self.declare_parameter('local_range', 20.0)
         self.declare_parameter('resolution', 0.05)
         self.declare_parameter('inflation_radius', 0.2)
-        self.declare_parameter('update_rate', 10.0)
         self.declare_parameter('height_filter_min', -1.0)
         self.declare_parameter('height_filter_max', 0.5)
         self.declare_parameter('search_radius', 5.0)
@@ -67,10 +63,8 @@ class WaypointReplanner(Node):
         
         # Load all parameters
         self.local_range = self.get_parameter('local_range').value
-        self.get_logger().info(f'Local range: {self.local_range}')
         self.resolution = self.get_parameter('resolution').value
         self.inflation_radius = self.get_parameter('inflation_radius').value
-        self.update_rate = self.get_parameter('update_rate').value
         self.height_filter_min = self.get_parameter('height_filter_min').value
         self.height_filter_max = self.get_parameter('height_filter_max').value
         self.search_radius = self.get_parameter('search_radius').value
@@ -128,23 +122,44 @@ class WaypointReplanner(Node):
             self.latest_camera_points = msg
         self.get_logger().debug('Received camera points')
 
-    def update_callback(self):
-        """Periodic update callback"""
-        if self.replan_pending and not self.is_replanning:
-            self.is_replanning = True
-            replan_thread = Thread(target=self._execute_replan_thread)
-            replan_thread.start()
-
-    def _execute_replan_thread(self):
-        """Execute replanning in a separate thread"""
+    def handle_replan_request(self, request, response):
+        """Handle replanning service request
+        
+        Args:
+            request: TriggerReplan request containing waypoints (PoseArray)
+            response: TriggerReplan response with success flag and new_waypoints (PoseArray)
+        """
         try:
+            # Validate input waypoints
+            if not request.waypoints.poses:
+                self.get_logger().warn('Invalid waypoints received: empty poses')
+                response.success = False
+                response.new_waypoints = request.waypoints  # Return original path
+                return response
+
+            self.target_waypoints = request.waypoints
             success = self.execute_replan()
-            if success:
-                self.replan_pending = False
+            
+            # Initialize return PoseArray
+            response.new_waypoints = PoseArray()
+            response.new_waypoints.header = request.waypoints.header
+            
+            if success and hasattr(self, 'optimized_path'):
+                response.success = True
+                response.new_waypoints.poses = self.optimized_path
+            else:
+                response.success = False
+                # Return original path if planning fails
+                response.new_waypoints.poses = request.waypoints.poses
+            
+            return response
+            
         except Exception as e:
-            self.get_logger().error(f'Replanning failed: {str(e)}')
-        finally:
-            self.is_replanning = False
+            self.get_logger().error(f'Replan request failed: {str(e)}')
+            response.success = False
+            # Return original path on error
+            response.new_waypoints = request.waypoints
+            return response
 
     def execute_replan(self):
         """Execute replanning process
@@ -175,7 +190,7 @@ class WaypointReplanner(Node):
         current_pose.pose.position.z = current_transform.transform.translation.z
         current_pose.pose.orientation = current_transform.transform.rotation
         
-        self.generate_path(self.local_costmap, current_pose.pose)
+        self.generate_waypoints(current_pose.pose)
         self.get_logger().info('Replanning completed')
         return True
 
@@ -301,7 +316,6 @@ class WaypointReplanner(Node):
             kernel_size = max(1, int(self.inflation_radius / self.resolution))
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * kernel_size + 1, 2 * kernel_size + 1))
             obstacle_layer = (local_costmap == 100).astype(np.uint8)
-            inflated_obstacles = cv2.dilate(obstacle_layer, kernel)
             
             dist_transform = cv2.distanceTransform(1 - obstacle_layer, cv2.DIST_L2, 5)
             max_dist = kernel_size * self.resolution
@@ -319,49 +333,19 @@ class WaypointReplanner(Node):
             self.get_logger().error(f'Point cloud processing failed: {str(e)}')
             return None
 
-    def handle_replan_request(self, request, response):
-        """Handle replanning service request"""
-        try:
-            self.target_waypoints = request.waypoints
-            self.replan_pending = True
-            response.success = True
-            return response
-        except Exception as e:
-            self.get_logger().error(f'Replan request failed: {str(e)}')
-            response.success = False
-            return response
-
-    def create_optimized_waypoints(self):
-        """Create optimized waypoints"""
-        new_waypoints = PoseArray()
-        new_waypoints.header.frame_id = 'map'
-        new_waypoints.header.stamp = self.get_clock().now().to_msg()
-        
-        # TODO: Implement actual waypoint optimization logic
-        # Add optimized waypoints to new_waypoints.poses
-        
-        return new_waypoints
-
-    def generate_path(self, local_map, robot_pose):
-        """Generate path based on optimization
+    def generate_waypoints(self, robot_pose):
+        """Generate optimized path
         
         Args:
-            local_map: Local costmap
             robot_pose: Current robot pose
-            
-        Returns:
-            Path: Replanned path
         """
-        new_path = Path()
-        new_path.header.frame_id = 'map'
-        new_path.header.stamp = self.get_clock().now().to_msg()
-        
         if not hasattr(self, 'target_waypoints') or not self.target_waypoints.poses:
             self.get_logger().warn('No waypoints available for replanning')
-            return new_path
+            return
         
         self.current_position = robot_pose
         optimized_poses = []
+        optimized_poses.append(self.target_waypoints.poses[0])
 
         if len(self.target_waypoints.poses) >= 2:
             start_pose = self.target_waypoints.poses[0]
@@ -370,23 +354,30 @@ class WaypointReplanner(Node):
             best_wp = self.optimize_waypoint(start_pose, end_pose)
             
             if best_wp:
-                new_pose = PoseStamped()
-                new_pose.header = new_path.header
-                new_pose.pose.position.x = best_wp[0]
-                new_pose.pose.position.y = best_wp[1]
-                new_pose.pose.position.z = 0.0
+                # Calculate offset from the optimized second waypoint
+                dx = best_wp[0] - end_pose.position.x
+                dy = best_wp[1] - end_pose.position.y
                 
-                yaw = math.atan2(best_wp[1] - robot_pose.position.y,
-                                 best_wp[0] - robot_pose.position.x)
-                quat = quaternions.axangle2quat([0, 0, 1], yaw)
-                new_pose.pose.orientation.w = quat[0]
-                new_pose.pose.orientation.x = quat[1]
-                new_pose.pose.orientation.y = quat[2]
-                new_pose.pose.orientation.z = quat[3]
-                    
+                # Add the optimized second waypoint
+                new_pose = Pose()
+                new_pose.position.x = best_wp[0]
+                new_pose.position.y = best_wp[1]
+                new_pose.position.z = 0.0
+                new_pose.orientation = end_pose.orientation
                 optimized_poses.append(new_pose)
+                
+                # Apply the same offset to remaining waypoints
+                for i in range(2, len(self.target_waypoints.poses)):
+                    original_pose = self.target_waypoints.poses[i]
+                    new_pose = Pose()
+                    new_pose.position.x = original_pose.position.x + dx
+                    new_pose.position.y = original_pose.position.y + dy
+                    new_pose.position.z = original_pose.position.z
+                    new_pose.orientation = original_pose.orientation
+                    optimized_poses.append(new_pose)
         
-        new_path.poses = optimized_poses
+        # Store optimized path for service response
+        self.optimized_path = optimized_poses
         
         # Only perform visualization if enabled
         if self.enable_visualization:
@@ -410,8 +401,6 @@ class WaypointReplanner(Node):
                 )
             except Exception as e:
                 self.get_logger().error(f'Failed to visualize costmap: {str(e)}')
-        
-        return new_path
 
     def distance_to_obstacle(self, x, y):
         """Calculate actual distance to nearest obstacle
@@ -475,7 +464,7 @@ class WaypointReplanner(Node):
         angle_range = self.angle_range
         
         best_point = None
-        best_score = float('inf')
+        min_score = float('inf')
         
         radius_step = max_radius / num_radius_samples
         angle_step = (2 * angle_range) / (num_angle_samples - 1)
@@ -490,14 +479,14 @@ class WaypointReplanner(Node):
                 
                 obstacle_cost = 1.0 - self.distance_to_obstacle(sample_x, sample_y) / max_radius
                 path_angle = math.atan2(
-                    end.position.y - sample_y,
-                    end.position.x - sample_x
+                    sample_y - self.current_position.position.y,
+                    sample_x - self.current_position.position.x
                 )
                 orig_angle = math.atan2(
                     dy,
                     dx
                 )
-                smoothness_cost = abs(path_angle - orig_angle) / math.pi / 4
+                smoothness_cost = abs(path_angle - orig_angle) / self.angle_range
                 position_cost = 1.0 - self.distance(
                     self.current_position.position.x,
                     self.current_position.position.y,
@@ -510,8 +499,8 @@ class WaypointReplanner(Node):
                     self.cost_weights[2] * position_cost
                 )
                 
-                if total_cost < best_score:
-                    best_score = total_cost
+                if total_cost < min_score:
+                    min_score = total_cost
                     best_point = (sample_x, sample_y)
                     
                 self.get_logger().debug(
@@ -531,8 +520,9 @@ class WaypointReplanner(Node):
             )
         
         self.get_logger().info(
+            f'Original point: ({end.position.x:.2f}, {end.position.y:.2f})\n'
             f'Best point found at ({best_point[0]:.2f}, {best_point[1]:.2f}) '
-            f'with score {best_score:.2f}'
+            f'with score {min_score:.2f}'
         )
         
         return best_point

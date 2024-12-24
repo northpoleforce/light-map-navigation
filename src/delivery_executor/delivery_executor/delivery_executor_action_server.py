@@ -17,7 +17,7 @@ from custom_interfaces.msg import (
     DeliveryFeedback,
     DeliveryResult
 )
-from custom_interfaces.srv import GetTaskSequence
+from custom_interfaces.srv import GetTaskSequence, TriggerReplan
 
 from nav2_simple_commander.robot_navigator import (
     BasicNavigator,
@@ -27,7 +27,7 @@ from nav2_simple_commander.robot_navigator import (
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 
 from utils_pkg import (
     OSMHandler,
@@ -88,6 +88,13 @@ class DeliveryExecutorActionServer(Node):
         
         self._init_map_handler()
         self._init_tf_listener()
+        
+        # Add TriggerReplan service client
+        self.replan_client = self.create_client(
+            TriggerReplan,
+            'trigger_replan',
+            callback_group=callback_group
+        )
 
     def _init_map_handler(self):
         try:
@@ -215,7 +222,7 @@ class DeliveryExecutorActionServer(Node):
                 return False
 
             waypoints = await self._get_navigation_waypoints(robot_position, lon, lat)
-            return await self._execute_waypoint_navigation(waypoints, robot_position, goal_handle, feedback, feedback_msg) if waypoints else False
+            return await self._execute_waypoint_navigation(waypoints, goal_handle, feedback, feedback_msg) if waypoints else False
 
         except Exception as e:
             self.get_logger().error(f'Navigation failed: {str(e)}')
@@ -275,33 +282,88 @@ class DeliveryExecutorActionServer(Node):
             self.get_logger().error(f'Error getting waypoints: {str(e)}')
             return None
 
-    async def _execute_waypoint_navigation(self, waypoints, robot_position: tuple, goal_handle, feedback, feedback_msg) -> bool:
-        # Interpolate waypoints with 1-meter interval
-        interpolated_waypoints = self._interpolate_waypoints(waypoints, interval=3.0)
-        total_waypoints = len(interpolated_waypoints)
-        
-        for i, waypoint in enumerate(interpolated_waypoints):
-            if goal_handle.is_cancel_requested:
-                return False
+    async def _execute_waypoint_navigation(self, waypoints, goal_handle, feedback, feedback_msg) -> bool:
+        """Execute navigation through a sequence of waypoints with validation and replanning."""
+        try:
+            # Interpolate waypoints for smoother navigation
+            interpolated_waypoints = self._interpolate_waypoints(waypoints, interval=5.0)
 
-            self._update_task_progress(
-                goal_handle,
-                feedback,
-                feedback_msg,
-                f"Navigating to waypoint {i+1}/{total_waypoints}"
-            )
-            
-            local_coords = self._transform_coordinates(waypoint)
-            pose = self._create_navigation_pose(
-                local_coords[0],
-                local_coords[1],
-                self._calculate_waypoint_orientation(i, interpolated_waypoints, *local_coords, robot_position)
-            )
-            
-            if not await self._navigate_to_waypoint(pose, i+1, total_waypoints, goal_handle, feedback, feedback_msg):
-                return False
+            # Transform waypoints to local coordinates and calculate orientations
+            local_waypoints = []
+            for i, waypoint in enumerate(interpolated_waypoints):
+                local_waypoint = self._transform_coordinates(waypoint)
                 
-        return True
+                # Calculate yaw based on direction to next waypoint
+                yaw = 0.0
+                if i < len(interpolated_waypoints) - 1:
+                    next_waypoint = self._transform_coordinates(interpolated_waypoints[i + 1])
+                    dx = next_waypoint[0] - local_waypoint[0]
+                    dy = next_waypoint[1] - local_waypoint[1]
+                    yaw = math.atan2(dy, dx)
+                else:
+                    yaw = local_waypoints[-1][2]
+                
+                local_waypoints.append((local_waypoint[0], local_waypoint[1], yaw))
+                
+            total_waypoints = len(local_waypoints)
+            self.get_logger().info(f'Total waypoints: {total_waypoints}')
+            
+            # Navigate through waypoints
+            current_index = 1
+            while current_index < len(local_waypoints):
+                # Check for cancellation request
+                if goal_handle.is_cancel_requested:
+                    return False
+                    
+                current_waypoint = local_waypoints[current_index]
+                
+                # Validate and replan if necessary
+                if not await self._validate_waypoint(current_waypoint):
+                    self.get_logger().warn(f'Waypoint {current_index + 1} is invalid, attempting to replan...')
+                    
+                    # Replan from previous valid waypoint
+                    target_waypoints = local_waypoints[current_index - 1:]
+                    new_waypoints = await self._local_replan(target_waypoints)
+                    
+                    if new_waypoints:
+                        self.get_logger().info(f'Replanning successful, received {len(new_waypoints)} new waypoints')
+                        local_waypoints[current_index:] = new_waypoints[1:]
+                    else:
+                        self.get_logger().error('Replanning failed')
+                        return False
+                
+                # Update progress
+                self._update_task_progress(
+                    goal_handle,
+                    feedback,
+                    feedback_msg,
+                    f"Navigating to waypoint {current_index}/{total_waypoints}"
+                )
+                
+                # Create and execute navigation pose
+                pose = self._create_navigation_pose(
+                    local_waypoints[current_index][0],
+                    local_waypoints[current_index][1],
+                    local_waypoints[current_index][2]
+                )
+                
+                if not await self._navigate_to_waypoint(
+                    pose, 
+                    current_index, 
+                    total_waypoints, 
+                    goal_handle, 
+                    feedback, 
+                    feedback_msg
+                ):
+                    return False
+                    
+                current_index += 1
+                
+            return True
+            
+        except Exception as e:
+            self.get_logger().error(f'Waypoint navigation failed: {str(e)}')
+            return False
 
     def _transform_coordinates(self, waypoint):
         utm_east, utm_north, _ = CoordinateTransformer.wgs84_to_utm(waypoint.lon, waypoint.lat)
@@ -309,14 +371,16 @@ class DeliveryExecutorActionServer(Node):
         transform_matrix_inv = np.linalg.inv(transform_matrix)
         utm_coords = np.array([[utm_east], [utm_north], [1.0]])
         local_coords = np.dot(transform_matrix_inv, utm_coords)
-        return float(local_coords[0][0]), float(local_coords[1][0])
+        return (float(local_coords[0][0]), float(local_coords[1][0]))
 
-    def _create_navigation_pose(self, x: float, y: float, quaternion: tuple) -> PoseStamped:
+    def _create_navigation_pose(self, x: float, y: float, yaw: float) -> PoseStamped:
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.header.stamp = self.get_clock().now().to_msg()
         pose.pose.position.x = x
         pose.pose.position.y = y
+        pose.pose.position.z = 0.0
+        quaternion = self._yaw_to_quaternion(yaw)
         pose.pose.orientation.x = quaternion[0]
         pose.pose.orientation.y = quaternion[1]
         pose.pose.orientation.z = quaternion[2]
@@ -603,35 +667,26 @@ class DeliveryExecutorActionServer(Node):
         return CancelResponse.ACCEPT
 
     def _calculate_waypoint_orientation(self, current_idx: int, waypoints: list, 
-                                     current_utm_east: float, current_utm_north: float,
-                                     robot_position: tuple) -> tuple:
+                                         current_waypoint: np.ndarray,
+                                         robot_position: tuple) -> tuple:
+        """
+        Calculate orientation for current waypoint
+        Args:
+            current_idx: Index of current waypoint
+            waypoints: List of all waypoints
+            current_waypoint: Current waypoint as numpy array [[x], [y], [1.0]]
+            robot_position: Current robot position (x, y)
+        Returns:
+            tuple: Quaternion orientation (x, y, z, w)
+        """
         try:
-            transform_matrix = self._get_transform_matrix()
-            transform_matrix_inv = np.linalg.inv(transform_matrix)
-
-            if current_idx == 0:
-                current_utm = np.array([[current_utm_east], [current_utm_north], [1.0]])
-                current_local = np.dot(transform_matrix_inv, current_utm)
-                
-                dx = current_local[0][0] - robot_position[0]
-                dy = current_local[1][0] - robot_position[1]
+            next_idx = current_idx + 1
+            if next_idx < len(waypoints):
+                next_waypoint = waypoints[next_idx]
+                dx = next_waypoint[0] - current_waypoint[0]
+                dy = next_waypoint[1] - current_waypoint[1]
             else:
-                next_idx = current_idx + 1
-                if next_idx < len(waypoints):
-                    next_waypoint = waypoints[next_idx]
-                    next_utm_east, next_utm_north, _ = CoordinateTransformer.wgs84_to_utm(
-                        next_waypoint.lon, next_waypoint.lat)
-                    
-                    current_utm = np.array([[current_utm_east], [current_utm_north], [1.0]])
-                    next_utm = np.array([[next_utm_east], [next_utm_north], [1.0]])
-                    
-                    current_local = np.dot(transform_matrix_inv, current_utm)
-                    next_local = np.dot(transform_matrix_inv, next_utm)
-                    
-                    dx = next_local[0][0] - current_local[0][0]
-                    dy = next_local[1][0] - current_local[1][0]
-                else:
-                    return self._yaw_to_quaternion(0.0)
+                return self._yaw_to_quaternion(0.0)
 
             yaw = math.atan2(dy, dx)
             return self._yaw_to_quaternion(yaw)
@@ -702,6 +757,121 @@ class DeliveryExecutorActionServer(Node):
         interpolated_waypoints.append(waypoints[-1])
         
         return interpolated_waypoints
+
+    async def _validate_waypoint(self, waypoint) -> bool:
+        """
+        Validate if a waypoint is reachable and safe
+        Args:
+            waypoint: Waypoint to validate
+        Returns:
+            bool: True if waypoint is valid, False otherwise
+        """
+        try:
+            # TODO: Implement waypoint validation logic:
+            
+            return False
+            
+        except Exception as e:
+            self.get_logger().error(f'Waypoint validation failed: {str(e)}')
+            return False
+
+    async def _local_replan(self, target_waypoints: list) -> list:
+        """
+        Replan path to target waypoint using TriggerReplan service
+        Args:
+            target_waypoints: List of waypoints to reach
+        Returns:
+            list: New list of waypoints, or None if replanning fails
+        """
+        try:
+            # Wait for service availability
+            if not self.replan_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().error('Replan service not available')
+                return None
+
+            request = TriggerReplan.Request()
+            request.waypoints = self._create_pose_array(target_waypoints)
+            
+            future = await self.replan_client.call_async(request)
+            
+            if future.success:
+                new_waypoints = self._convert_pose_array_to_waypoints(future.new_waypoints)
+                return new_waypoints
+            else:
+                self.get_logger().warn('Replanning failed')
+                return None
+            
+        except Exception as e:
+            self.get_logger().error(f'Path replanning failed: {str(e)}')
+            return None
+
+    def _create_pose_array(self, waypoints: list) -> PoseArray:
+        """
+        Convert waypoint list to PoseArray message
+        Args:
+            waypoints: List of waypoints (each should be a numpy array with shape (3,1))
+        Returns:
+            PoseArray: Converted pose array message
+        """
+        try:
+            pose_array = PoseArray()
+            pose_array.header.frame_id = 'map'
+            pose_array.header.stamp = self.get_clock().now().to_msg()
+            
+            for i, waypoint in enumerate(waypoints):
+                # Create a new Pose message
+                pose = Pose()
+                
+                # Set position
+                pose.position.x = waypoint[0]
+                pose.position.y = waypoint[1]
+                pose.position.z = 0.0
+                
+                # Set orientation
+                quaternion = self._yaw_to_quaternion(waypoint[2])
+                pose.orientation.x = quaternion[0]
+                pose.orientation.y = quaternion[1]
+                pose.orientation.z = quaternion[2]
+                pose.orientation.w = quaternion[3]
+                
+                pose_array.poses.append(pose)
+            
+            self.get_logger().debug(f'Created PoseArray with {len(pose_array.poses)} poses')
+            return pose_array
+            
+        except Exception as e:
+            self.get_logger().error(f'Error creating pose array: {str(e)}')
+            self.get_logger().error(f'Waypoint type: {type(waypoints[0])}')
+            self.get_logger().error(f'Waypoint content: {waypoints[0]}')
+            raise
+
+    def _convert_pose_array_to_waypoints(self, pose_array: PoseArray) -> list:
+        """
+        Convert PoseArray message back to waypoint list
+        Args:
+            pose_array: PoseArray message to convert
+        Returns:
+            list: Converted waypoint list with (x, y, yaw) tuples
+        """
+        try:
+            waypoints = []
+            for pose in pose_array.poses:
+                x = pose.position.x
+                y = pose.position.y
+                
+                yaw = math.atan2(2.0 * (pose.orientation.w * pose.orientation.z + 
+                                      pose.orientation.x * pose.orientation.y),
+                               1.0 - 2.0 * (pose.orientation.y * pose.orientation.y + 
+                                          pose.orientation.z * pose.orientation.z))
+                
+                waypoint = (x, y, yaw)
+                waypoints.append(waypoint)
+            
+            return waypoints
+            
+        except Exception as e:
+            self.get_logger().error(f'Error converting pose array to waypoints: {str(e)}')
+            return []
 
 def main(args=None):
     rclpy.init(args=args)
