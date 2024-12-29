@@ -8,12 +8,13 @@ import json
 from utils_pkg import APIClient
 import yaml
 import os
+import re
 
 class EntranceRecognitionService(Node):
     SYSTEM_PROMPT = """Now I need your help to analysis the picture as my assistant. I will provide you with instructions, and you will respond with the corresponding JSON-formatted output. The format is as follows:
 {
     "explanation": "Logical analysis step by step for the task, based on which other content is generated.",
-    "unit_number": "Only the unit number."
+    "unit_number": "Only the unit number." # If you cannot find the unit number, please return an empty string.
 }
 For example:
 {
@@ -117,10 +118,20 @@ Note: It is necessary to output the result in JSON format and nothing else."""
         """Parse and validate LLM response"""
         if response and response[0]:
             try:
-                result = json.loads(response[0])
-                return result.get("unit_number")
-            except json.JSONDecodeError:
-                self.get_logger().error("Failed to parse LLM response as JSON")
+                pattern = r'\{[^{}]*\}'
+                matches = re.findall(pattern, response[0])
+                if matches:
+                    json_str = matches[0]
+                    result = json.loads(json_str)
+
+                    return result.get("unit_number")
+                else:
+                    self.get_logger().error("No JSON object found in response")
+                    self.get_logger().error(f"Raw response: {response[0]}")
+                    
+            except json.JSONDecodeError as e:
+                self.get_logger().error(f"Failed to parse LLM response as JSON: {e}")
+                self.get_logger().error(f"Raw response: {response[0]}")
         return None
 
 def main(args=None):
