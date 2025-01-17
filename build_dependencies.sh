@@ -2,7 +2,7 @@
 
 # 定义颜色输出
 GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # 定义conda环境变量
 CONDA_ENV="dl_env"
@@ -40,8 +40,3 @@ log_step "Installing Python Packages"
 install_in_conda "Flask" "flask"
 install_in_conda "grounded_sam2" "-e src/grounded_sam2/grounded_sam2/grounded_sam2"
 install_in_conda "grounding_dino" "--no-build-isolation -e src/grounded_sam2/grounded_sam2/grounded_sam2/grounding_dino"
-
-# 文件移动
-#log_step "Moving Server File"
-#mv src/grounded_sam2/grounded_sam2/grounded_sam2_server.py \
-#   src/grounded_sam2/grounded_sam2/Grounded-SAM-2/grounded_sam2_server.py
