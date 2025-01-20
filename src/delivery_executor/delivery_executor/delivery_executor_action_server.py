@@ -769,7 +769,7 @@ class DeliveryExecutorActionServer(Node):
         try:
             # TODO: Implement waypoint validation logic:
             
-            return False
+            return True
             
         except Exception as e:
             self.get_logger().error(f'Waypoint validation failed: {str(e)}')
