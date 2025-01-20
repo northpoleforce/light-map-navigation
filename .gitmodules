@@ -27,9 +27,9 @@
 	branch = RM2024_SMBU_auto_sentry
 	shallow = true
 	ignore = dirty
-[submodule "src/grounded_sam2/grounded_sam2/Grounded-SAM-2"]
-	path = src/grounded_sam2/grounded_sam2/Grounded-SAM-2
-	url = https://github.com/KEEPSLAMDUNK/Grounded-SAM-2.git
+[submodule "src/grounded_sam2/grounded_sam2/grounded_sam2"]
+	path = src/grounded_sam2/grounded_sam2/grounded_sam2
+	url = https://github.com/KEEPSLAMDUNK/grounded_sam2.git
 	branch = main
 	shallow = true
 	ignore = dirty

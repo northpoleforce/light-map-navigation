@@ -44,24 +44,34 @@ This project includes a basic Dockerfile and can be used with [Dev Container](ht
     git clone https://github.com/EI-Nav/light-map-navigation.git --depth=1
     git submodule init
     git submodule update
-
+    
     cd src/classic_localization/FAST_LIO/
     git submodule init
     git submodule update
     ```
 
-4. Install the `ms-vscode-remote.remote-containers` extension in VSCode on the host machine.
+4. Download Gazebo models and extract them to the `~/.gazebo/` directory:
+    ```sh
+    # Download from Baidu Cloud Drive
+    Link: https://pan.baidu.com/s/1Mkn4BHXaeWyvjxCMvw-gZQ
+    Password: pp8a
+    
+    # After extraction, place files in
+    ~/.gazebo/
+    ```
 
-5. Open this project in VSCode, press `Ctrl+Shift+P`, type and select `Dev Containers: Rebuild and Reopen in Container`.
+5. Install the `ms-vscode-remote.remote-containers` extension in VSCode on the host machine.
 
-6. Install dependencies and compile:
+6. Open this project in VSCode, press `Ctrl+Shift+P`, type and select `Dev Containers: Rebuild and Reopen in Container`.
+
+7. Install dependencies and compile:
     ```sh
     # Set up your proxy
     export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
-
+    
     # Install dependencies
     ./build_dependencies.sh
-
+    
     # Compile
     ./build_project.sh
     ```
@@ -95,21 +105,39 @@ This project includes a basic Dockerfile and can be used with [Dev Container](ht
     sudo make install
     ```
 
-3. Install dependencies:
+3. Set up the conda environment:
+
+    ```sh
+    conda create --name dl_env python=3.10
+    conda activate dl_env
+    
+    conda install -c conda-forge libstdcxx-ng
+    pip install "numpy<2.0" pandas matplotlib scikit-learn jupyterlab
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    pip install opencv-python pycocotools matplotlib onnxruntime
+    pip install git+https://github.com/facebookresearch/sam2.git
+    pip install git+https://github.com/IDEA-Research/GroundingDINO.git
+    ```
+
+4. Install dependencies for ros package:
 
     ```sh
     cd light-map-navigation
-
+    
     rosdep install -r --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y
-
+    
     pip3 install -r requirements.txt
     ```
+
+4. Install other dependencies according to the [build_dependencies.sh](./build_dependencies.sh).
 
 4. Compile:
 
     ```sh
     ./build.sh
     ```
+
+
 
 ## Configuration
 
@@ -124,6 +152,28 @@ llm_api:
   base_url: "your_base_url"
   model_name: "your_model_name" 
 ```
+
+### GSAM2 Config
+
+```yaml
+grounded_sam2_node:
+  ros__parameters:
+    gsam2:
+      scale: 1.0
+      do_sharpen: false
+      base_path: "/workspaces/light-map-navigation/src/grounded_sam2/grounded_sam2/grounded_sam2/"
+      text_prompt: "ground . car . building"
+      sam2_checkpoint: "./checkpoints/sam2.1_hiera_small.pt"
+      sam2_model_config: "configs/sam2.1/sam2.1_hiera_s.yaml"
+      grounding_dino_config: "grounding_dino/groundingdino/config/GroundingDINO_SwinT_OGC.py"
+      grounding_dino_checkpoint: "gdino_checkpoints/groundingdino_swint_ogc.pth"
+      box_threshold: 0.3
+      text_threshold: 0.25
+      area_threshold: 80
+      processing_rate: 10.0
+```
+
+
 
 ## Run
 
@@ -152,43 +202,47 @@ ros2 launch delivery_bringup delivery_system_sim.launch.py
 ros2 run delivery_executor delivery_executor_action_client
 ```
 
-### Grounded-SAM-2 Server
+### GSAM2 Node
 If you want to use Grounded-SAM-2 for open-vocabulary instance segmentation, you can run the following commands:
 ```sh
 # Set up your proxy
 export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
 
 # Download SAM2 checkpoints
-cd src/grounded_sam2/grounded_sam2/Grounded-SAM-2/checkpoints
+cd src/grounded_sam2/grounded_sam2/grounded_sam2/checkpoints
 bash download_ckpts.sh
 
 # Download GroundingDINO checkpoints
-cd src/grounded_sam2/grounded_sam2/Grounded-SAM-2/gdino_checkpoints
+cd src/grounded_sam2/grounded_sam2/grounded_sam2/gdino_checkpoints
 bash download_ckpts.sh
 
 # Run Grounded-SAM-2 server
 cd /workspaces/light-map-navigation
-./start_gsam2_server.sh
-
-# Run Grounded-SAM-2 client --- refer to (src/grounded_sam2/grounded_sam2/grounded_sam2_client.py) for your own usage
-source install/setup.bash
-ros2 run grounded_sam2 grounded_sam2_client
+ros2 launch grounded_sam2 gsam2_node.launch.py
 ```
+
+
 
 ## Robot Model
 
 Four-wheeled vehicle using a differential drive model.
+
+
 
 ## Known Issues
 
 - In some cases, the control system struggles to reach waypoints (zigzagging behavior).
 - In ICP localization mode, there are coordinate system issues, with the vehicle appearing below the map.
 
+
+
 ## TODO
 
 - Delete old delivery code, models, and tests.
 - Improve documentation.
 - Multimodal localization module based on factor graphs.
+
+
 
 ## Acknowledgments
 

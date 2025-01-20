@@ -2,7 +2,7 @@ from setuptools import setup
 import os
 from glob import glob
 
-package_name = 'grounded_sam2'
+package_name = 'ipm_image_node'
 
 setup(
     name=package_name,
@@ -12,19 +12,19 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='wjh',
-    maintainer_email='wjh_9696@163.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='florian',
+    maintainer_email='git@flova.de',
+    description='Inverse Perspective Mapping Node for Image or Mask Topics',
+    license='Apache License, Version 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'gsam2_node = grounded_sam2.grounded_sam2.gsam2_node:main',
+            'ipm = ipm_image_node.ipm:main'
         ],
     },
 )
