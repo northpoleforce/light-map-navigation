@@ -6,6 +6,8 @@ from utils_pkg import APIClient
 import json
 import re
 from utils_pkg import OSMHandler
+import os
+import yaml
 
 class TaskPlanningService(Node):
     """
@@ -57,12 +59,22 @@ class TaskPlanningService(Node):
             self.units_coordinates[building_id] = building_units
 
     def _init_llm_client(self):
-        """Initialize LLM API client"""
-        self.api_client = APIClient(
-            api_key="sk-729ef159c2b74926874860f6e7e12ca6",
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-            model_name="qwen-turbo"
-        )
+        """Initialize LLM API client with configuration from yaml file"""
+        try:
+            package_path = os.path.dirname(os.path.dirname(__file__))
+            config_path = os.path.join(package_path, 'config', 'api_config.yaml')
+            
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+            
+            self.api_client = APIClient(
+                api_key=config['llm_api']['key'],
+                base_url=config['llm_api']['base_url'],
+                model_name=config['llm_api']['model_name']
+            )
+        except Exception as e:
+            self.get_logger().error(f'Failed to load API configuration: {str(e)}')
+            raise
 
     def _generate_llm_prompt(self, user_input: str) -> str:
         """

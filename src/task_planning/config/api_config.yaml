@@ -1,4 +1,4 @@
-vlm_api:
+llm_api:
   key: "sk-729ef159c2b74926874860f6e7e12ca6"
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  model_name: "qwen-vl-max" 
+  model_name: "qwen-turbo" 
