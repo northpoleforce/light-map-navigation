@@ -1,5 +1,9 @@
 # OPEN: Openstreetmap-enhanced oPen-air sEmantic Navigation
 
+[![Paper](https://img.shields.io/badge/Paper-PDF-red)](https://arxiv.org/pdf/2502.09238)
+[![arXiv](https://img.shields.io/badge/arXiv-2502.09238-b31b1b)](http://arxiv.org/abs/2502.09238)
+[![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://ei-nav.github.io/OpenBench/)
+
 OPEN is a system designed for efficient last-mile delivery using autonomous robots. It leverages OpenStreetMap (OSM) for scalable map representation, Large Language Models (LLMs) for understanding delivery instructions, and Vision-Language Models (VLMs) for localization, map updates, and house number recognition.
 
 ## Installation
@@ -52,9 +56,15 @@ This project includes a basic Dockerfile and can be used with [Dev Container](ht
 
 4. Download Gazebo models and extract them to the `~/.gazebo/` directory:
     ```sh
-    # Download from Baidu Cloud Drive
+    # Download from Baidu Cloud Drive (Choose one of the following):
+    
+    # Option 1: Complete model library (includes unused models)
     Link: https://pan.baidu.com/s/1Mkn4BHXaeWyvjxCMvw-gZQ
     Password: pp8a
+    
+    # Option 2: Minimal model library (recommended, contains only required models)
+    Link: https://pan.baidu.com/s/1CojOxnFrJjSLM_jpmkK_KA
+    Password: 49xs
     
     # After extraction, place files in
     ~/.gazebo/
@@ -231,8 +241,7 @@ Four-wheeled vehicle using a differential drive model.
 
 ## Known Issues
 
-- In some cases, the control system struggles to reach waypoints (zigzagging behavior).
-- In ICP localization mode, there are coordinate system issues, with the vehicle appearing below the map.
+- There are coordinate system issues, with the vehicle appearing below the map.
 
 
 
@@ -240,12 +249,32 @@ Four-wheeled vehicle using a differential drive model.
 
 - Delete old delivery code, models, and tests.
 - Improve documentation.
-- Multimodal localization module based on factor graphs.
 
 
 
 ## Acknowledgments
 
-Referenced repository:
+This project builds upon and is inspired by several excellent works:
 
-https://github.com/LihanChen2004/pb_rm_simulation?tab=readme-ov-file
+- [PB-RM-Simulation](https://github.com/LihanChen2004/pb_rm_simulation)
+- [Grounded-Segment-Anything](https://github.com/IDEA-Research/Grounded-SAM-2)
+- [OpenStreetMap](https://www.openstreetmap.org)
+
+We thank all the contributors of these open-source projects for their valuable work.
+
+
+## Citation
+
+If you find our work useful for your research, please consider giving this repository a star ⭐ and citing our paper as follows:
+
+```bibtex
+@misc{wang2025openbenchnewbenchmarkbaseline,
+      title={OpenBench: A New Benchmark and Baseline for Semantic Navigation in Smart Logistics}, 
+      author={Junhui Wang and Dongjie Huo and Zehui Xu and Yongliang Shi and Yimin Yan and Yuanxin Wang and Chao Gao and Yan Qiao and Guyue Zhou},
+      year={2025},
+      eprint={2502.09238},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2502.09238}, 
+}
+```

@@ -3,3 +3,4 @@ openai
 pyclipper
 httpx[socks]
 requests
+transforms3d
