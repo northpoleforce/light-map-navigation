@@ -42,9 +42,9 @@ Note: It is necessary to output the result in JSON format and nothing else."""
             
             # Initialize API client
             self.client = APIClient(
-                api_key=config['llm_api']['key'],
-                base_url=config['llm_api']['base_url'],
-                model_name=config['llm_api']['model_name']
+                api_key=config['vlm_api']['key'],
+                base_url=config['vlm_api']['base_url'],
+                model_name=config['vlm_api']['model_name']
             )
         except Exception as e:
             self.get_logger().error(f'Failed to load API configuration: {str(e)}')
