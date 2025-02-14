@@ -157,11 +157,20 @@ To use this repository, you'll need to configure the following credentials:
 
 ```yaml
 # /workspace/light-map-navigation/src/building_entrance_recognition/config/api_config.yaml
-llm_api:
+vlm_api:
   key: "your_key"
   base_url: "your_base_url"
   model_name: "your_model_name" 
 ```
+
+### LLM API
+
+```yaml
+# /workspace/light-map-navigation/src/task_planning/config/api_config.yaml
+llm_api:
+  key: "your_key"
+  base_url: "your_base_url"
+  model_name: "your_model_name" 
 
 ### GSAM2 Config
 
