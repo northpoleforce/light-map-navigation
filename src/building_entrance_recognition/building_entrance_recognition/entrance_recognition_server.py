@@ -44,8 +44,6 @@ Note: It is necessary to output the result in JSON format and nothing else."""
             
             # Store API configuration
             self.api_url = config['vlm_api']['base_url']
-            self.api_key = config['vlm_api']['key']
-            
             self.get_logger().info('API configuration loaded successfully')
         except Exception as e:
             self.get_logger().error(f'Failed to load API configuration: {str(e)}')
@@ -89,18 +87,17 @@ Note: It is necessary to output the result in JSON format and nothing else."""
             str: Unit number if detected, None otherwise
         """
         try:
-            # Convert OpenCV image to PIL Image
+            # 转换为PIL图像进行处理
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             pil_image = Image.fromarray(image_rgb)
             
-            # Convert image to base64 format
+            # 转换为base64
             image_base64 = self._convert_image_to_base64(pil_image)
             
-            # Get LLM response
+            # 获取LLM响应
             response = self._get_llm_response(image_base64)
             
-            # Parse and validate response
-            
+            # 解析并验证响应
             return self._parse_llm_response(response)
             
         except Exception as e:
@@ -109,70 +106,65 @@ Note: It is necessary to output the result in JSON format and nothing else."""
 
     def _convert_image_to_base64(self, pil_image, size=(512, 512)):
         """
-        Convert PIL Image to base64 string with resizing
+        将PIL图像转换为base64字符串
         
         Args:
-            pil_image (PIL.Image): PIL Image object
-            size (tuple): Target image size (width, height), default (512, 512)
+            pil_image (PIL.Image): PIL图像对象
+            size (tuple): 目标图像大小 (width, height)，默认 (512, 512)
             
         Returns:
-            str: Base64 encoded image string
+            str: Base64编码的图像字符串
         """
-        # 转为 RGB，防止有些图片是 RGBA/CMYK等格式不兼容
+        # 转为RGB格式
         pil_image = pil_image.convert("RGB")
         # 缩放到指定尺寸
         pil_image = pil_image.resize(size)
         
-        # 转换为 BytesIO 以便编码
+        # 转换为BytesIO以便编码
         buffered = BytesIO()
         pil_image.save(buffered, format="JPEG")
-        # base64 编码
+        # base64编码
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return img_base64
 
     def _get_llm_response(self, image_base64):
         """
-        Get response from LLM API using HTTP request
+        调用LLM API获取响应
         
         Args:
-            image_base64 (str): Base64 encoded image string
+            image_base64 (str): Base64编码的图像字符串
             
         Returns:
-            dict: API response
+            dict: API响应
         """
-        # 构造请求 JSON
+        # 构造请求数据
+        prompt = f"Please analyze this image and identify the unit number. {self.SYSTEM_PROMPT}"
+        
         payload = {
             "image_base64": image_base64,
-            "prompt": "Please analyze this image and identify the unit number.",
-            "system_prompt": self.SYSTEM_PROMPT
-        }
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "prompt": prompt
         }
 
         try:
-            response = requests.post(
-                f"{self.api_url}/inference/single_image", 
-                json=payload,
-                headers=headers
-            )
-            response.raise_for_status()  # 如果非 2xx，会抛出异常
+            single_image_api = f"{self.api_url}/inference/single_image"
+            self.get_logger().info(f"Calling API at: {single_image_api}")
+            
+            response = requests.post(single_image_api, json=payload)
+            response.raise_for_status()  # 如果非2xx，会抛出异常
             return response.json()
         except requests.exceptions.RequestException as e:
             self.get_logger().error(f"API request error: {str(e)}")
             return None
 
     def _parse_llm_response(self, response):
-        """Parse and validate LLM response"""
+        """解析并验证LLM响应"""
         if not response:
             return None
             
         try:
-            # 假设API返回格式已经包含text字段
-            if "text" in response:
-                response_text = response["text"]
+            # 新接口返回的格式处理
+            if "response" in response:
+                response_text = response["response"]
                 
                 # 使用正则表达式查找JSON对象
                 pattern = r'\{[^{}]*\}'

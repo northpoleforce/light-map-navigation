@@ -1,4 +1,4 @@
 vlm_api:
   key: ""
-  base_url: ""
+  base_url: "http://39.107.84.253:35333"
   model_name: "" 

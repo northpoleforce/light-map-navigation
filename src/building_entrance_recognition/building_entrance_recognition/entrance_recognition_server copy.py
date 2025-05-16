@@ -5,12 +5,10 @@ import cv2
 from custom_interfaces.srv import GetEntranceId
 import base64
 import json
+from utils_pkg import APIClient
 import yaml
 import os
 import re
-import requests
-from PIL import Image
-from io import BytesIO
 
 class EntranceRecognitionService(Node):
     SYSTEM_PROMPT = """Now I need your help to analysis the picture as my assistant. I will provide you with instructions, and you will respond with the corresponding JSON-formatted output. The format is as follows:
@@ -29,10 +27,10 @@ Note: It is necessary to output the result in JSON format and nothing else."""
         super().__init__('entrance_recognition_server')
         self.srv = self.create_service(GetEntranceId, 'entrance_recognition', self.recognize_entrance_callback)
         self.bridge = CvBridge()
-        self._init_api_config()
+        self._init_api_client()
 
-    def _init_api_config(self):
-        """Initialize API configuration from yaml file"""
+    def _init_api_client(self):
+        """Initialize API client with configuration from yaml file"""
         try:
             # Get the package path
             package_path = os.path.dirname(os.path.dirname(__file__))
@@ -42,11 +40,12 @@ Note: It is necessary to output the result in JSON format and nothing else."""
             with open(config_path, 'r') as file:
                 config = yaml.safe_load(file)
             
-            # Store API configuration
-            self.api_url = config['vlm_api']['base_url']
-            self.api_key = config['vlm_api']['key']
-            
-            self.get_logger().info('API configuration loaded successfully')
+            # Initialize API client
+            self.client = APIClient(
+                api_key=config['vlm_api']['key'],
+                base_url=config['vlm_api']['base_url'],
+                model_name=config['vlm_api']['model_name']
+            )
         except Exception as e:
             self.get_logger().error(f'Failed to load API configuration: {str(e)}')
             raise
@@ -89,109 +88,50 @@ Note: It is necessary to output the result in JSON format and nothing else."""
             str: Unit number if detected, None otherwise
         """
         try:
-            # Convert OpenCV image to PIL Image
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(image_rgb)
-            
             # Convert image to base64 format
-            image_base64 = self._convert_image_to_base64(pil_image)
+            image_base64 = self._convert_image_to_base64(image)
             
             # Get LLM response
             response = self._get_llm_response(image_base64)
             
             # Parse and validate response
-            
             return self._parse_llm_response(response)
             
         except Exception as e:
             self.get_logger().error(f"Error in entrance recognition: {str(e)}")
             return None
 
-    def _convert_image_to_base64(self, pil_image, size=(512, 512)):
-        """
-        Convert PIL Image to base64 string with resizing
-        
-        Args:
-            pil_image (PIL.Image): PIL Image object
-            size (tuple): Target image size (width, height), default (512, 512)
-            
-        Returns:
-            str: Base64 encoded image string
-        """
-        # 转为 RGB，防止有些图片是 RGBA/CMYK等格式不兼容
-        pil_image = pil_image.convert("RGB")
-        # 缩放到指定尺寸
-        pil_image = pil_image.resize(size)
-        
-        # 转换为 BytesIO 以便编码
-        buffered = BytesIO()
-        pil_image.save(buffered, format="JPEG")
-        # base64 编码
-        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return img_base64
+    def _convert_image_to_base64(self, image):
+        """Convert OpenCV image to base64 string"""
+        _, buffer = cv2.imencode('.jpg', image)
+        return base64.b64encode(buffer).decode('utf-8')
 
     def _get_llm_response(self, image_base64):
-        """
-        Get response from LLM API using HTTP request
-        
-        Args:
-            image_base64 (str): Base64 encoded image string
-            
-        Returns:
-            dict: API response
-        """
-        # 构造请求 JSON
-        payload = {
-            "image_base64": image_base64,
-            "prompt": "Please analyze this image and identify the unit number.",
-            "system_prompt": self.SYSTEM_PROMPT
-        }
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        try:
-            response = requests.post(
-                f"{self.api_url}/inference/single_image", 
-                json=payload,
-                headers=headers
-            )
-            response.raise_for_status()  # 如果非 2xx，会抛出异常
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            self.get_logger().error(f"API request error: {str(e)}")
-            return None
+        """Get response from LLM API"""
+        return self.client.chat(
+            prompt="Please analyze this image and identify the unit number.",
+            system_prompt=self.SYSTEM_PROMPT,
+            image_data=image_base64
+        )
 
     def _parse_llm_response(self, response):
         """Parse and validate LLM response"""
-        if not response:
-            return None
-            
-        try:
-            # 假设API返回格式已经包含text字段
-            if "text" in response:
-                response_text = response["text"]
-                
-                # 使用正则表达式查找JSON对象
+        if response and response[0]:
+            try:
                 pattern = r'\{[^{}]*\}'
-                matches = re.findall(pattern, response_text)
+                matches = re.findall(pattern, response[0])
                 if matches:
                     json_str = matches[0]
                     result = json.loads(json_str)
-                    # 获取单元号
+
                     return result.get("unit_number")
                 else:
                     self.get_logger().error("No JSON object found in response")
-                    self.get_logger().error(f"Raw response: {response_text}")
-            else:
-                self.get_logger().error("Invalid API response format")
-                self.get_logger().error(f"Response: {response}")
-                
-        except (json.JSONDecodeError, KeyError) as e:
-            self.get_logger().error(f"Failed to parse LLM response: {e}")
-            self.get_logger().error(f"Raw response: {response}")
+                    self.get_logger().error(f"Raw response: {response[0]}")
+                    
+            except json.JSONDecodeError as e:
+                self.get_logger().error(f"Failed to parse LLM response as JSON: {e}")
+                self.get_logger().error(f"Raw response: {response[0]}")
         return None
 
 def main(args=None):

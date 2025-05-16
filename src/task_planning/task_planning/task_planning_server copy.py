@@ -3,57 +3,11 @@ from rclpy.node import Node
 from custom_interfaces.srv import GetTaskSequence
 from custom_interfaces.msg import TaskDescription
 from utils_pkg import APIClient
-import requests, json
+import json
 import re
 from utils_pkg import OSMHandler
 import os
 import yaml
-
-class CustomLLMClient:
-    def __init__(self, api_url="http://39.107.84.253:35223/v1/chat/completions"):
-        self.api_url = api_url
-        
-    def simple_chat(self, prompt, temperature=0.3, max_tokens=2048):
-        """
-        向自定义LLM API发送请求
-        
-        Args:
-            prompt (str): 发送给LLM的提示文本
-            temperature (float): 生成结果的随机性参数
-            max_tokens (int): 生成的最大token数
-            
-        Returns:
-            str: LLM返回的文本内容
-        """
-        headers = {
-            'Content-Type': 'application/json'
-        }
-        
-        data = {
-            "model": "gs-server-llm",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stream": False
-        }
-        
-        try:
-            response = requests.post(self.api_url, headers=headers, data=json.dumps(data))
-            response.raise_for_status()  # 如果请求失败，抛出异常
-            
-            result = response.json()
-            # 根据API的返回格式提取内容，这里假设返回格式类似OpenAI API
-            if "choices" in result and len(result["choices"]) > 0:
-                return result["choices"][0]["message"]["content"]
-            return ""
-        except Exception as e:
-            print(f"API请求错误: {e}")
-            return ""
 
 class TaskPlanningService(Node):
     """
@@ -113,12 +67,11 @@ class TaskPlanningService(Node):
             with open(config_path, 'r') as file:
                 config = yaml.safe_load(file)
             
-            # self.api_client = APIClient(
-            #     api_key=config['llm_api']['key'],
-            #     base_url=config['llm_api']['base_url'],
-            #     model_name=config['llm_api']['model_name']
-            # )
-            self.api_client = CustomLLMClient()
+            self.api_client = APIClient(
+                api_key=config['llm_api']['key'],
+                base_url=config['llm_api']['base_url'],
+                model_name=config['llm_api']['model_name']
+            )
         except Exception as e:
             self.get_logger().error(f'Failed to load API configuration: {str(e)}')
             raise
@@ -197,14 +150,9 @@ Output Rules:
         self.get_logger().info(f'User input: {user_input}')
         
         # Get LLM response
-        # response_content = self.api_client.simple_chat(
-        #     prompt=self._generate_llm_prompt(user_input),
-        #     temperature=0.3
-        # )
         response_content = self.api_client.simple_chat(
             prompt=self._generate_llm_prompt(user_input),
-            temperature=0.3,
-            max_tokens=2048
+            temperature=0.3
         )
         
         # Validate response
